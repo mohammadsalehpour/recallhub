@@ -1,0 +1,63 @@
+[
+  {
+    "name": "qWorkItemList",
+    "method": "GET",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/work-items"
+  },
+  {
+    "name": "qWorkItemCreate",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/work-items",
+    "bodyTemplate": {
+      "title": "{{inpWorkItemTitle.text}}",
+      "original_request": "{{inpWorkItemRequest.text}}",
+      "request_type": "{{selRequestType.selectedOptionValue}}",
+      "risk_level": "{{selRiskLevel.selectedOptionValue}}",
+      "priority": "{{selPriority.selectedOptionValue}}",
+      "open_questions": "{{tblOpenQuestions.tableData.map(o => o.question)}}"
+    }
+  },
+  {
+    "name": "qWorkItemContext",
+    "method": "GET",
+    "path": "/work-items/{{appsmith.store.activeWorkItemId}}/context-packet"
+  },
+  {
+    "name": "qWorkItemResearchStart",
+    "method": "POST",
+    "path": "/work-items/{{appsmith.store.activeWorkItemId}}/research/start",
+    "bodyTemplate": {
+      "idempotency_key": "{{appsmith.store.workItemActionKey}}"
+    }
+  },
+  {
+    "name": "qWorkItemSpecStart",
+    "method": "POST",
+    "path": "/work-items/{{appsmith.store.activeWorkItemId}}/spec/start",
+    "bodyTemplate": {
+      "idempotency_key": "{{appsmith.store.workItemActionKey}}"
+    }
+  },
+  {
+    "name": "qWorkItemApproval",
+    "method": "POST",
+    "path": "/work-items/{{appsmith.store.activeWorkItemId}}/human-approval",
+    "bodyTemplate": {
+      "decision": "{{selApprovalDecision.selectedOptionValue}}",
+      "reason": "{{inpApprovalReason.text}}"
+    }
+  },
+  {
+    "name": "qWorkItemMemoryCommit",
+    "method": "POST",
+    "path": "/work-items/{{appsmith.store.activeWorkItemId}}/memory-commit",
+    "bodyTemplate": {
+      "title": "{{inpCommitTitle.text}}",
+      "what_changed": "{{inpWhatChanged.text}}",
+      "why_changed": "{{inpWhyChanged.text}}",
+      "how_changed": "{{inpHowChanged.text}}",
+      "files_touched": "{{tblFilesTouched.tableData.map(x => x.path)}}",
+      "commands_run": "{{tblCommandsRun.tableData.map(x => x.command)}}"
+    }
+  }
+]

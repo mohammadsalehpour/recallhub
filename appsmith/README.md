@@ -409,3 +409,22 @@ Appsmith آماده‌ی بهره‌برداری است اگر:
 ---
 
 این سند عمداً Appsmith را در مرز UI نگه می‌دارد تا ریسک‌های business logic، تحلیل اشتباه، و تداخل با NestJS/n8n حذف شود.
+
+---
+
+## 13) فایل‌های آماده برای پیاده‌سازی سریع
+
+برای اینکه این سند مستقیم قابل اجرا باشد، این artifactها داخل ریپو اضافه شده‌اند:
+
+- `appsmith/config/datasource.template.json`
+- `appsmith/queries/projects.json`
+- `appsmith/queries/memory.json`
+- `appsmith/queries/work_items.json`
+- `appsmith/queries/workflows.json`
+- `appsmith/queries/stability.json`
+- `appsmith/jsobjects/JS_ProjectFlow.js`
+- `appsmith/jsobjects/JS_WorkItemFlow.js`
+- `appsmith/jsobjects/JS_RunMonitor.js`
+- `appsmith/pages/IMPLEMENTATION_CHECKLIST.md`
+
+این فایل‌ها template هستند و باید با نام widget/query واقعی اپ شما align شوند.

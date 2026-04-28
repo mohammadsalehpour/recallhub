@@ -1,0 +1,16 @@
+[
+  { "name": "qWorkflowList", "method": "GET", "path": "/workflows" },
+  { "name": "qWorkflowRunsList", "method": "GET", "path": "/workflow-runs" },
+  { "name": "qWorkflowRunGet", "method": "GET", "path": "/workflow-runs/{{appsmith.store.activeRunId}}" },
+  { "name": "qWorkflowRunEvents", "method": "GET", "path": "/workflow-runs/{{appsmith.store.activeRunId}}/events" },
+  {
+    "name": "qWorkflowRunCreate",
+    "method": "POST",
+    "path": "/workflows/{{selWorkflowCode.selectedOptionValue}}/run",
+    "bodyTemplate": {
+      "project_id": "{{appsmith.store.activeProjectId}}",
+      "work_item_id": "{{appsmith.store.activeWorkItemId}}",
+      "idempotency_key": "{{appsmith.store.workflowIdempotencyKey}}"
+    }
+  }
+]

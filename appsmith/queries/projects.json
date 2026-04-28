@@ -1,0 +1,71 @@
+[
+  {
+    "name": "qProjectList",
+    "method": "GET",
+    "path": "/projects"
+  },
+  {
+    "name": "qProjectCreate",
+    "method": "POST",
+    "path": "/projects",
+    "bodyTemplate": {
+      "project_code": "{{inpProjectCode.text}}",
+      "name": "{{inpProjectName.text}}",
+      "description": "{{inpProjectDescription.text}}",
+      "business_domain": "{{selBusinessDomain.selectedOptionValue}}",
+      "primary_framework": {
+        "name": "{{inpFrameworkName.text}}",
+        "version": "{{inpFrameworkVersion.text}}"
+      },
+      "tech_stack": "{{tblTechStack.tableData}}"
+    }
+  },
+  {
+    "name": "qRepoCreate",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/repositories",
+    "bodyTemplate": {
+      "repo_name": "{{inpRepoName.text}}",
+      "locator_type": "local_path",
+      "repo_root": "{{inpRepoRoot.text}}",
+      "is_primary": true
+    }
+  },
+  {
+    "name": "qRepoValidate",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/repositories/{{tblRepositories.selectedRow.id}}/validate"
+  },
+  {
+    "name": "qPathCreate",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/paths",
+    "bodyTemplate": {
+      "repository_id": "{{tblRepositories.selectedRow.id}}",
+      "path": "{{inpPath.text}}",
+      "path_type": "{{selPathType.selectedOptionValue}}",
+      "scan_policy": "{{selScanPolicy.selectedOptionValue}}",
+      "ownership": "{{selOwnership.selectedOptionValue}}"
+    }
+  },
+  {
+    "name": "qConfigCreate",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/config-files",
+    "bodyTemplate": {
+      "repository_id": "{{tblRepositories.selectedRow.id}}",
+      "relative_path": "{{inpConfigRelativePath.text}}",
+      "config_type": "{{inpConfigType.text}}",
+      "contains_secrets": "{{selContainsSecrets.selectedOptionValue}}",
+      "scan_policy": "{{selConfigScanPolicy.selectedOptionValue}}"
+    }
+  },
+  {
+    "name": "qProjectSync",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/sync",
+    "headers": {
+      "idempotency-key": "{{appsmith.store.syncIdempotencyKey}}"
+    }
+  }
+]
