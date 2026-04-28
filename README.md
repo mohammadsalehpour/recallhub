@@ -21,6 +21,14 @@ API health:
 GET http://localhost:3000/api/v1
 ```
 
+
+Privilege regression check (after DB migrations):
+
+```bash
+cd api
+npm run test:n8n-privileges
+```
+
 The local Postgres password is `Aa123456` as configured for this development environment.
 Postgres is exposed on host port `15432` to avoid colliding with an existing local Postgres on `5432`.
 
