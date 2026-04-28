@@ -1,407 +1,382 @@
-# RecallHub Appsmith Development Guide (کامل و عملیاتی)
+# RecallHub Appsmith Implementation Blueprint (Risk-Controlled)
 
-این سند، راهنمای کامل توسعه Appsmith برای RecallHub است و بر اساس سند اصلی زیر بازنویسی شده:
+این سند نسخه نهایی و ریسک-کنترل‌شده‌ی توسعه Appsmith برای RecallHub است.
 
+منبع قطعی تحلیل:
 - `appsmith_nestjs_n8n_control_plane_development_ready_RECALLHUB_EDITED.md`
 
-هدف: از **صفر تا صد**، از ایجاد پروژه تا اجرای چرخه کامل توسعه (Research → Spec → Review → Approval → Execution → Memory Commit) در Appsmith.
+هدف این سند:
+1) از صفر تا صد، مسیر پیاده‌سازی UI کنترل‌پلین RecallHub را مشخص کند.  
+2) تضمین کند در Appsmith هیچ business logic خطرناک، حدس تحلیلی، یا bypass روی NestJS/n8n رخ ندهد.  
+3) هر ریسک معماری اصلی را با Rule عملیاتی و چک‌لیست قابل اجرا پوشش دهد.
 
 ---
 
-## 1) اصول معماری که Appsmith باید رعایت کند
+## 0) خطوط قرمز (Non-Negotiable Rules)
 
-## قاعده طلایی
+### R0-1: Appsmith فقط Presentation + API Consumer است
+- Appsmith نباید state machine اجرا کند.
+- Appsmith نباید تصمیم domain بگیرد.
+- Appsmith نباید داده دامنه را مستقیم در DB بنویسد.
 
-Appsmith فقط **UI + API Consumer** است.
+### R0-2: Appsmith هرگز n8n را مستقیم صدا نمی‌زند
+- فقط NestJS endpointها مجاز هستند.
+- هر trigger workflow باید از NestJS عبور کند.
 
-- Appsmith نباید مستقیم به دیتابیس دامنه RecallHub وصل شود.
-- Appsmith نباید n8n را مستقیم صدا بزند.
-- تمام عملیات باید فقط از مسیر NestJS API انجام شود.
+### R0-3: بدون default مخفی
+- در UI هیچ مقدار پیش‌فرض پنهانی برای `projectCode`, `repoRoot`, `frameworkVersion` تنظیم نشود.
+- اگر کاربر داده نداده، UI باید صریحاً از کاربر بگیرد یا API خطا برگرداند.
 
-## جریان استاندارد
+### R0-4: Appsmith نباید «unknown» را حدس بزند
+- هر داده‌ی نامطمئن باید `unknown` یا `needs_user_input` بماند.
+- UI نباید مقدارسازی تخمینی انجام دهد.
 
-1. کاربر در Appsmith عملیاتی انجام می‌دهد.
-2. Appsmith درخواست را به NestJS می‌فرستد.
-3. NestJS اعتبارسنجی/مجوز/State Machine/ثبت Audit را انجام می‌دهد.
-4. در صورت نیاز، NestJS workflow run می‌سازد و n8n را trigger می‌کند.
-5. n8n callback امضاشده را به NestJS برمی‌گرداند.
-6. Appsmith وضعیت و نتیجه را فقط از NestJS می‌خواند.
-
----
-
-## 2) پیش‌نیازها
-
-- API NestJS بالا باشد (`/api/v1`).
-- مدل‌های پروژه/ریپازیتوری/مسیرها و WorkItemها در API فعال باشند.
-- endpointهای workflow و callback در API فعال باشند.
-- Appsmith به API دسترسی شبکه‌ای داشته باشد.
+### R0-5: Approval Gate اجباری
+- UI نباید راهی برای دور زدن Human Approval داشته باشد.
 
 ---
 
-## 3) ساخت Data Source در Appsmith
+## 1) مرز مسئولیت‌ها (Appsmith / NestJS / n8n)
 
-در Appsmith یک Data Source از نوع REST API بساز:
+## Appsmith
+- فرم، جدول، داشبورد، تعامل کاربر
+- اعتبارسنجی سطح UX (مثلاً required field)
+- نمایش state/result/error
 
-- **Name:** `RecallHubAPI`
-- **Base URL:** `http://api:3000/api/v1` (یا URL محیط)
-- **Auth:** JWT یا API Key (مطابق پیاده‌سازی backend)
-- **Headers پیش‌فرض:**
+## NestJS
+- مالک persistence
+- validation نهایی
+- authorization
+- audit log
+- workflow run/state machine
+- callback verification
+
+## n8n
+- executor برای automation/LLM/integration
+- تولید artifact ساخت‌یافته
+- callback امضاشده به NestJS
+
+---
+
+## 2) ریسک‌ماتریس و کنترل‌های اجباری در Appsmith
+
+| ریسک | کنترل در Appsmith | Rule قابل تست |
+|---|---|---|
+| bypass کردن NestJS | همه queryها فقط Base URL API | هیچ query با URL ن8n یا DB وجود نداشته باشد |
+| state machine در UI | دکمه‌ها فقط بر اساس status enable/disable می‌شوند، transition واقعی در backend | UI هرگز status را locally mutate نکند |
+| حدس تحلیلی | فیلدهای اجباری صریح + unknown support | هیچ autofill پنهان برای domain fields |
+| اجرای بدون approval | دکمه‌های execution در status نامجاز غیرفعال | قبل از approve، action اجرا نشود |
+| callback trust در UI | داده callback فقط از endpointهای NestJS خوانده شود | UI هرگز payload خام n8n را truth تلقی نکند |
+| نشت secret | token/secret hard-code نشود | جستجو در JS Objectها بدون secret literal |
+
+---
+
+## 3) Setup عملیاتی Appsmith
+
+## 3.1 Data Source
+- Name: `RecallHubAPI`
+- Base URL: `http://api:3000/api/v1` (یا env-specific URL)
+- Auth: JWT / API Key
+- Headers:
   - `Content-Type: application/json`
-  - `Authorization: Bearer {{appsmith.store.token}}` (اگر JWT دارید)
+  - `Authorization: Bearer {{appsmith.store.token}}`
 
-پیشنهاد:
+## 3.2 App Store Contract
+- `token`
+- `activeProjectCode`
+- `activeWorkItemId`
+- `activeRunId`
+- `activeRole` (اختیاری برای UX gating)
 
-- یک صفحه Login بساز و token را در `appsmith.store.token` ذخیره کن.
-- قبل از اجرای queryهای حساس، وجود token را validate کن.
+## 3.3 URL State
+- `?project=...`
+- `?workItem=...`
+- `?run=...`
 
----
-
-## 4) ساختار صفحات Appsmith (نسخه Production-Ready)
-
-## 4.1 صفحه: `P01_Login`
-
-هدف: گرفتن JWT/API key و ذخیره در Store.
-
-اجزا:
-
-- Input: `inpToken`
-- Button: `btnSaveToken`
-
-اکشن دکمه:
-
-```js
-{{
-  storeValue('token', inpToken.text, true);
-  showAlert('Token ذخیره شد', 'success');
-}}
-```
+هدف: Deep-link، handover، reproducibility.
 
 ---
 
-## 4.2 صفحه: `P10_Project_Setup_Wizard`
+## 4) صفحه‌ها از صفر تا صد
 
-هدف: تعریف کامل پروژه و آماده‌سازی Sync.
+## P01_Login
+### هدف
+دریافت token و ذخیره امن در store.
 
-### Step A — Create Project
-
-فیلدها:
-
-- project_code
-- name
-- description
-- business_domain
-- primary_framework.name
-- primary_framework.version
-- tech_stack[] (حداقل یک declared)
-
-Query: `qCreateProject`
-
-- Method: `POST`
-- URL: `/projects`
-- Body: از فرم
-
-### Step B — Add Repository
-
-فیلدها:
-
-- repo_name
-- locator_type = `local_path`
-- repo_root
-- is_primary
-
-Query: `qCreateRepository`
-
-- `POST /projects/{{tblProjects.selectedRow.projectCode}}/repositories`
-
-### Step C — Add Paths
-
-برای include/exclude/meta مسیرها.
-
-Query: `qCreatePath`
-
-- `POST /projects/:projectCode/paths`
-
-### Step D — Add Config Files
-
-مثل `.env.example`, `requirements.txt`, `odoo.conf`.
-
-Query: `qCreateConfigFile`
-
-- `POST /projects/:projectCode/config-files`
-
-### Step E — Validate + Sync
-
-- Validate repo: `POST /projects/:projectCode/repositories/:repoId/validate`
-- Sync: `POST /projects/:projectCode/sync`
-
-نکته UX:
-
-- حتما idempotency key برای sync بفرست.
-- Workflow run id را ذخیره کن تا polling انجام شود.
+### Do/Don't
+- ✅ token در storeValue ذخیره شود.
+- ❌ token در JS code hard-code نشود.
 
 ---
 
-## 4.3 صفحه: `P20_Project_Memory`
+## P10_Project_Setup_Wizard
+### هدف
+تعریف project profile کامل بدون default مخفی.
 
-هدف: مشاهده حافظه پروژه.
+### Step 1 — Create Project
+`POST /projects`
 
-Queryها:
+Required UI fields:
+- `project_code`
+- `name`
+- `description`
+- `primary_framework.name`
+- `primary_framework.version`
+- `tech_stack[]` با حداقل یک `declared`
 
+### Step 2 — Add Repository
+`POST /projects/:projectCode/repositories`
+
+### Step 3 — Add Paths
+`POST /projects/:projectCode/paths`
+
+### Step 4 — Add Config Files
+`POST /projects/:projectCode/config-files`
+
+### Step 5 — Validate + Sync
+- `POST /projects/:projectCode/repositories/:repoId/validate`
+- `POST /projects/:projectCode/sync`
+
+### ریسک‌های این صفحه
+- اگر `repoRoot` دلخواه/غیرمجاز وارد شود، backend باید رد کند.
+- UI باید خطاهای validation backend را کامل و شفاف نمایش دهد.
+
+---
+
+## P20_Project_Memory
+### هدف
+نمایش حافظه پروژه (read-only + traceable).
+
+Queries:
 - `GET /projects/:projectCode/modules`
 - `GET /projects/:projectCode/files`
 - `GET /projects/:projectCode/memory-chunks`
 - `GET /projects/:projectCode/memory-events`
 - `GET /projects/:projectCode/memory-commits`
 
-Widgetها:
-
-- Tabs: Modules / Files / Chunks / Events / Commits
-- Tableهای جدا برای هر dataset
-- JSON viewer برای جزئیات ردیف انتخابی
+### Rule
+- UI فقط نمایش می‌دهد؛ هیچ write مستقیم به memory tables وجود ندارد.
 
 ---
 
-## 4.4 صفحه: `P30_WorkItems_Board`
+## P30_Work_Items
+### هدف
+کنترل چرخه کامل توسعه task.
 
-هدف: مدیریت چرخه کار توسعه.
+### Create Work Item
+`POST /projects/:projectCode/work-items`
 
-### بخش 1: ایجاد Work Item
+### List Work Items
+`GET /projects/:projectCode/work-items`
 
-Query: `qCreateWorkItem`
+### Read Context Packet
+`GET /work-items/:workItemId/context-packet`
 
-- `POST /projects/:projectCode/work-items`
+### Pipeline Actions
+- `POST /work-items/:workItemId/research/start`
+- `POST /work-items/:workItemId/spec/start`
+- `POST /work-items/:workItemId/human-approval`
+- `POST /work-items/:workItemId/memory-commit`
 
-فیلدها:
-
-- title
-- original_request
-- request_type
-- risk_level
-- priority
-- open_questions[]
-
-### بخش 2: لیست Work Itemها
-
-Query: `qListWorkItems`
-
-- `GET /projects/:projectCode/work-items`
-
-### بخش 3: Context Packet
-
-Query: `qGetContextPacket`
-
-- `GET /work-items/:workItemId/context-packet`
-
-### بخش 4: اجرای pipeline
-
-- Start research: `POST /work-items/:id/research/start`
-- Start spec: `POST /work-items/:id/spec/start`
-- Human approval: `POST /work-items/:id/human-approval`
-- Final memory commit: `POST /work-items/:id/memory-commit`
-
-قواعد مهم UI:
-
-- دکمه‌ها با status کار کنند (state-aware actions).
-- اگر status در وضعیت مجاز نیست، دکمه disable و پیام راهنما نمایش بده.
+### Status-aware UX (اجباری)
+- فقط actionهای مجاز برای status فعلی فعال شوند.
+- هر action نامجاز باید disabled + tooltip توضیحی داشته باشد.
+- UI نباید status را حدس بزند یا locally set کند؛ بعد از هر action re-fetch انجام دهد.
 
 ---
 
-## 4.5 صفحه: `P40_Workflow_Runs`
+## P40_Workflow_Runs_Monitor
+### هدف
+رهگیری شفاف automation.
 
-هدف: مانیتور اجرای automationها.
-
-Queryها:
-
+Queries:
 - `GET /workflows`
 - `POST /workflows/:code/run`
 - `GET /workflow-runs`
 - `GET /workflow-runs/:runId`
 - `GET /workflow-runs/:runId/events`
 
-پیشنهاد UX:
-
-- Auto-refresh هر 5 تا 10 ثانیه برای runهای pending/running.
-- Badge رنگی برای statusها: pending/running/succeeded/failed/callback_missing.
-- Link بین run و work_item و artifact.
+### Rule
+- نمایش terminal statuses: `succeeded`, `failed`, `cancelled`, `timed_out`, `callback_missing`
+- برای runهای in-flight، polling محدود با backoff انجام شود.
 
 ---
 
-## 4.6 صفحه: `P50_Stability_Dashboard`
+## P50_Stability_Dashboard
+### هدف
+عملیات پایدارسازی production.
 
-هدف: عملیات پایدارسازی.
-
-Queryها:
-
+Queries:
 - `GET /health/stability`
-- `POST /admin/reconcile/workflow-runs?stale_minutes=30`
+- `POST /admin/reconcile/workflow-runs?stale_minutes=...`
 
-شاخص‌ها:
-
-- project count
-- workflow run counts by status
-- stale workflow run count
-
-اکشن‌ها:
-
-- دکمه Reconcile stale runs
-- نمایش نتیجه updated count + run ids
+### Rule
+- این صفحه فقط برای role مجاز نمایش داده شود.
+- قبل از reconcile یک confirm modal اجباری باشد.
 
 ---
 
-## 4.7 صفحه: `P60_Audit_Timeline`
+## P60_Audit_Timeline
+### هدف
+قابلیت پیگیری اینکه «چه کسی، چه کاری، چه زمانی» انجام داد.
 
-هدف: رهگیری کامل عملیات.
+اگر endpoint audit وجود دارد:
+- `GET /audit/logs?...`
 
-در صورت endpoint:
-
-- `GET /audit/logs?projectCode=...`
-
-یا جایگزین موقت:
-
-- استفاده از memory events به‌عنوان timeline
+در غیر اینصورت موقت:
+- `memory-events` + `workflow events` timeline
 
 ---
 
-## 5) Query Naming Convention
+## 5) Query Library استاندارد
 
-برای نگهداری ساده:
-
+نام‌گذاری پیشنهادی:
+- `qAuthSaveToken`
 - `qProjectCreate`
-- `qProjectList`
+- `qProjectGet`
 - `qRepoCreate`
 - `qRepoValidate`
 - `qPathCreate`
 - `qConfigCreate`
 - `qProjectSync`
-- `qModulesList`
+- `qMemoryModules`
+- `qMemoryFiles`
+- `qMemoryEvents`
+- `qMemoryCommits`
 - `qWorkItemCreate`
 - `qWorkItemList`
+- `qWorkItemContext`
 - `qWorkItemResearchStart`
 - `qWorkItemSpecStart`
-- `qWorkItemHumanApproval`
+- `qWorkItemApproval`
 - `qWorkItemMemoryCommit`
+- `qWorkflowList`
+- `qWorkflowRunCreate`
 - `qWorkflowRunsList`
 - `qWorkflowRunEvents`
-- `qHealthStability`
-- `qReconcileWorkflowRuns`
+- `qStabilityHealth`
+- `qStabilityReconcile`
 
 ---
 
-## 6) Store & URL Params Strategy
+## 6) JS Objects (بدون business logic دامنه)
 
-Store keys:
+## `JS_ProjectFlow`
+- `createProjectWizardFlow()`
+- `validateRepositoryAndSync()`
 
-- `token`
-- `activeProjectCode`
-- `activeWorkItemId`
-- `activeWorkflowRunId`
+## `JS_WorkItemFlow`
+- `startResearch()`
+- `startSpec()`
+- `submitApproval(decision)`
+- `submitMemoryCommit()`
 
-URL query params:
+## `JS_RunMonitor`
+- `pollRun(runId)`
+- `stopOnTerminal(run)`
 
-- `?project=...&workItem=...&run=...`
-
-برای deep-link و handover بین اعضای تیم.
-
----
-
-## 7) Validation و UX Rules
-
-- قبل از submit پروژه:
-  - `project_code`, `name`, `description`, `primary_framework` نباید خالی باشند.
-- قبل از sync:
-  - حداقل یک repository معتبر
-  - حداقل یک path با `scan_policy != exclude`
-- قبل از اجرای spec:
-  - status work item در وضعیت مجاز باشد.
-- قبل از human approval:
-  - user باید reason اختیاری/اجباری طبق policy وارد کند.
-
-Error handling:
-
-- پیام backend را مستقیم نمایش نده؛ normalize کن.
-- خطاهای idempotency و conflict را به پیام قابل‌فهم تبدیل کن.
+### قاعده مهم
+- JS Objectها فقط orchestrator UI باشند.
+- هیچ محاسبه دامنه‌ای که باید در NestJS باشد داخل JS انجام نشود.
 
 ---
 
-## 8) Security Checklist در Appsmith
+## 7) Validation Strategy (UI vs Backend)
 
-- هیچ secret در JS Object hard-code نشود.
-- token فقط در Store امن Appsmith نگهداری شود.
-- direct call به n8n ممنوع.
-- endpointهای admin (reconcile) فقط برای نقش مجاز در UI نمایش داده شود.
-- قبل از هر action حساس، check role/permission در UI (و قطعی در backend).
+## UI Validation (light)
+- required fields
+- format اولیه
+- disable action در حالت نامجاز
 
----
+## Backend Validation (source of truth)
+- permission
+- state transition validity
+- idempotency
+- repo path policy
+- artifact/callback integrity
 
-## 9) State-Aware Button Matrix (Work Items)
-
-- `needs_research` → دکمه Start Research فعال
-- `research_ready` → Start Spec فعال
-- `spec_review` → Final Review/Revise action
-- `needs_human_approval` → Approve/Reject فعال
-- `done_pending_memory_commit` → ثبت Memory Commit فعال
-- `completed/rejected/cancelled` → همه دکمه‌های pipeline غیرفعال (read-only)
+Rule:
+- اگر backend گفت invalid، UI نباید override کند.
 
 ---
 
-## 10) Appsmith JS Objects پیشنهادی
+## 8) Error Handling Contract در Appsmith
 
-- `JSActionsProject`
-  - createProjectWithWizard()
-  - validateAndSyncProject()
-- `JSActionsWorkItem`
-  - createWorkItem()
-  - startResearch()
-  - startSpec()
-  - approveWorkItem()
-  - rejectWorkItem()
-  - completeWithMemoryCommit()
-- `JSPolling`
-  - pollWorkflowRun(runId)
-  - stopPollingWhenTerminal(status)
+دسته‌بندی خطاها:
+1. Validation errors (400/422)
+2. Auth/Permission (401/403)
+3. Conflict/Idempotency (409)
+4. System errors (500)
+
+UX Rule:
+- پیام فنی raw نمایش داده نشود.
+- toast/user-message قابل فهم + panel جزئیات فنی برای تیم توسعه ارائه شود.
 
 ---
 
-## 11) Milestone Plan برای تیم Appsmith
+## 9) Security Hardening Checklist
 
-### Milestone 1
-
-- Login + Data Source
-- Project Setup Wizard کامل
-- Project Sync trigger + run tracking
-
-### Milestone 2
-
-- Memory explorer
-- WorkItems board (create/list/context)
-
-### Milestone 3
-
-- Research/Spec/Human approval actions
-- Workflow runs monitor
-
-### Milestone 4
-
-- Stability dashboard
-- Audit timeline
-- Hardening UX + permissions + error mapping
+- [ ] هیچ URL مستقیم n8n در queryها نیست.
+- [ ] هیچ secret hard-coded در widget/js نیست.
+- [ ] endpointهای admin فقط برای role مجاز visible هستند.
+- [ ] قبل از actionهای تخریبی confirm modal داریم.
+- [ ] token lifecycle (set/update/clear) تعریف شده.
+- [ ] logout token را از store پاک می‌کند.
 
 ---
 
-## 12) Definition of Done (DoD) برای Appsmith RecallHub
+## 10) UAT Scenarios (از صفر تا صد)
 
-وقتی این شروط برقرار شد، Appsmith لایه MVP-ready محسوب می‌شود:
+## سناریو A — Onboarding کامل پروژه
+1. login
+2. create project
+3. create repository
+4. add paths
+5. add config files
+6. validate repo
+7. sync project
+8. مشاهده modules/files/events
 
-1. کاربر بتواند پروژه کامل تعریف کند (بدون default مخفی).
-2. کاربر بتواند sync را اجرا و نتیجه را در UI ببیند.
-3. کاربر بتواند WorkItem بسازد و pipeline را تا memory commit جلو ببرد.
-4. وضعیت workflow runها و eventها در UI قابل رهگیری باشد.
-5. عملیات stability (health + reconcile) در داشبورد عملیاتی قابل انجام باشد.
-6. هیچ endpoint مستقیم n8n در UI استفاده نشده باشد.
+قبولی:
+- هیچ مقدار default مخفی استفاده نشده باشد.
+- sync run قابل رهگیری باشد.
+
+## سناریو B — WorkItem کامل
+1. create work item
+2. start research
+3. start spec
+4. human approval
+5. memory commit
+6. completed
+
+قبولی:
+- هیچ transition نامعتبر از UI قابل انجام نباشد.
+
+## سناریو C — عملیات پایدارسازی
+1. health dashboard باز شود
+2. stale run دیده شود
+3. reconcile اجرا شود
+4. run status آپدیت شود
+
+قبولی:
+- reconcile فقط برای role مجاز اجرا شود.
 
 ---
 
-## 13) API Quick Reference (برای Query Library)
+## 11) Definition of Done (Appsmith)
+
+Appsmith آماده‌ی بهره‌برداری است اگر:
+
+1. کل flow پروژه از setup تا sync بدون bypass انجام شود.
+2. کل flow work item از request تا memory commit قابل اجرا باشد.
+3. workflow monitor و stability dashboard عملیاتی باشند.
+4. هیچ business logic دامنه‌ای خارج NestJS نباشد.
+5. هیچ call مستقیم به n8n/DB در Appsmith وجود نداشته باشد.
+6. رفتار UI با status machine backend سازگار و قابل ممیزی باشد.
+
+---
+
+## 12) لیست Endpointهای مرجع
 
 - `GET /projects`
 - `POST /projects`
@@ -433,4 +408,4 @@ Error handling:
 
 ---
 
-اگر این سند دقیق اجرا شود، Appsmith از یک UI ساده به کنترل‌پنل عملیاتی کامل RecallHub تبدیل می‌شود و کل جریان توسعه AI-assisted را بدون شکستن اصول معماری هدایت می‌کند.
+این سند عمداً Appsmith را در مرز UI نگه می‌دارد تا ریسک‌های business logic، تحلیل اشتباه، و تداخل با NestJS/n8n حذف شود.
