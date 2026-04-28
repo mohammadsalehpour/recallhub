@@ -1,0 +1,440 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["recallhub_core", "recallhub_memory", "recallhub_work", "recallhub_workflow", "recallhub_audit", "recallhub_inbox"]
+}
+
+enum ProjectStatus {
+  draft
+  configured
+  indexed
+  active
+  paused
+  archived
+
+  @@schema("recallhub_core")
+}
+
+enum TechSource {
+  declared
+  detected
+  imported
+
+  @@schema("recallhub_core")
+}
+
+enum TechStatus {
+  active
+  suggested
+  rejected
+  deprecated
+
+  @@schema("recallhub_core")
+}
+
+enum RepositoryStatus {
+  pending_validation
+  valid
+  invalid
+  disabled
+
+  @@schema("recallhub_core")
+}
+
+enum WorkItemStatus {
+  draft
+  needs_project_context
+  needs_research
+  research_in_progress
+  research_ready
+  spec_drafting
+  spec_review
+  needs_human_approval
+  approved_for_implementation
+  implementation_planning
+  implementation_in_progress
+  validation_in_progress
+  done_pending_memory_commit
+  completed
+  blocked
+  rejected
+  cancelled
+  failed
+  superseded
+
+  @@schema("recallhub_work")
+}
+
+enum WorkflowRunStatus {
+  pending
+  queued
+  running
+  succeeded
+  failed
+  cancelled
+  retrying
+  timed_out
+  callback_missing
+
+  @@schema("recallhub_workflow")
+}
+
+enum WorkflowExecutor {
+  n8n
+  internal_worker
+  manual
+
+  @@schema("recallhub_workflow")
+}
+
+model Project {
+  id                      String              @id @default(uuid()) @db.Uuid
+  projectCode             String              @unique @map("project_code")
+  name                    String
+  description             String
+  businessDomain          String?             @map("business_domain")
+  status                  ProjectStatus
+  primaryFrameworkName    String              @map("primary_framework_name")
+  primaryFrameworkVersion String              @map("primary_framework_version")
+  ownerId                 String?             @map("owner_id") @db.Uuid
+  metadataJson            Json?               @map("metadata_json")
+  createdAt               DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  techStack               ProjectTechStack[]
+  repositories            ProjectRepository[]
+  paths                   ProjectPath[]
+  configFiles             ProjectConfigFile[]
+  modules                 ProjectModule[]
+  files                   ProjectFile[]
+  memoryEvents            MemoryEvent[]
+  memoryCommits           MemoryCommit[]
+  workItems               WorkItem[]
+  artifacts               Artifact[]
+  workflowRuns            WorkflowRun[]
+  auditLogs               AuditLog[]
+
+  @@map("rh_projects")
+  @@schema("recallhub_core")
+}
+
+model ProjectTechStack {
+  id           String     @id @default(uuid()) @db.Uuid
+  projectId    String     @map("project_id") @db.Uuid
+  category     String
+  name         String
+  version      String?
+  source       TechSource
+  confidence   Decimal?   @db.Decimal(3, 2)
+  status       TechStatus
+  notes        String?
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("rh_project_tech_stack")
+  @@schema("recallhub_core")
+}
+
+model ProjectRepository {
+  id                   String             @id @default(uuid()) @db.Uuid
+  projectId            String             @map("project_id") @db.Uuid
+  repoName             String             @map("repo_name")
+  locatorType          String             @map("locator_type")
+  repoRoot             String             @map("repo_root")
+  hostPathHash         String?            @map("host_path_hash")
+  defaultBranch        String?            @map("default_branch")
+  currentBranch        String?            @map("current_branch")
+  commitSha            String?            @map("commit_sha")
+  isPrimary            Boolean            @default(false) @map("is_primary")
+  status               RepositoryStatus
+  validationErrorsJson Json?              @map("validation_errors_json")
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project              Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  paths                ProjectPath[]
+  configFiles          ProjectConfigFile[]
+  modules              ProjectModule[]
+  files                ProjectFile[]
+
+  @@index([projectId])
+  @@map("rh_project_repositories")
+  @@schema("recallhub_core")
+}
+
+model ProjectPath {
+  id           String             @id @default(uuid()) @db.Uuid
+  projectId    String             @map("project_id") @db.Uuid
+  repositoryId String             @map("repository_id") @db.Uuid
+  path         String
+  pathType     String             @map("path_type")
+  label        String?
+  isRequired   Boolean            @default(false) @map("is_required")
+  scanPolicy   String             @map("scan_policy")
+  ownership    String
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project      Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  repository   ProjectRepository  @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([repositoryId])
+  @@map("rh_project_paths")
+  @@schema("recallhub_core")
+}
+
+model ProjectConfigFile {
+  id              String            @id @default(uuid()) @db.Uuid
+  projectId       String            @map("project_id") @db.Uuid
+  repositoryId    String            @map("repository_id") @db.Uuid
+  relativePath    String            @map("relative_path")
+  configType      String            @map("config_type")
+  required        Boolean           @default(false)
+  containsSecrets String            @default("unknown") @map("contains_secrets")
+  scanPolicy      String            @map("scan_policy")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  repository      ProjectRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("rh_project_config_files")
+  @@schema("recallhub_core")
+}
+
+model ProjectModule {
+  id             String            @id @default(uuid()) @db.Uuid
+  projectId      String            @map("project_id") @db.Uuid
+  repositoryId   String            @map("repository_id") @db.Uuid
+  moduleName     String            @map("module_name")
+  modulePath     String            @map("module_path")
+  moduleType     String            @map("module_type")
+  ownership      String
+  manifestJson   Json?             @map("manifest_json")
+  dependsJson    Json?             @map("depends_json")
+  summary        String?
+  sourceStatus   String            @default("discovered") @map("source_status")
+  isActive       Boolean           @default(true) @map("is_active")
+  lastSyncRunId  String?           @map("last_sync_run_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  repository     ProjectRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  files          ProjectFile[]
+
+  @@index([projectId])
+  @@map("rh_project_modules")
+  @@schema("recallhub_memory")
+}
+
+model ProjectFile {
+  id              String            @id @default(uuid()) @db.Uuid
+  projectId       String            @map("project_id") @db.Uuid
+  repositoryId    String            @map("repository_id") @db.Uuid
+  moduleId        String?           @map("module_id") @db.Uuid
+  filePath        String            @map("file_path")
+  fileName        String            @map("file_name")
+  fileExt         String?           @map("file_ext")
+  fileKind        String?           @map("file_kind")
+  fileSizeBytes   BigInt?           @map("file_size_bytes")
+  contentHash     String?           @map("content_hash")
+  scanPolicy      String?           @map("scan_policy")
+  containsSecrets Boolean?          @map("contains_secrets")
+  isActive        Boolean           @default(true) @map("is_active")
+  lastSyncRunId   String?           @map("last_sync_run_id") @db.Uuid
+  metadataJson    Json?             @map("metadata_json")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  repository      ProjectRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  module          ProjectModule?    @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("rh_project_files")
+  @@schema("recallhub_memory")
+}
+
+model MemoryEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  workItemId  String?  @map("work_item_id") @db.Uuid
+  eventType   String   @map("event_type")
+  actorId     String?  @map("actor_id") @db.Uuid
+  reason      String?
+  summary     String
+  beforeJson  Json?    @map("before_json")
+  afterJson   Json?    @map("after_json")
+  artifactId  String?  @map("artifact_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem    WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("rh_memory_events")
+  @@schema("recallhub_memory")
+}
+
+model MemoryCommit {
+  id                   String   @id @default(uuid()) @db.Uuid
+  projectId            String   @map("project_id") @db.Uuid
+  workItemId           String   @map("work_item_id") @db.Uuid
+  title                String
+  whatChanged          String   @map("what_changed")
+  whyChanged           String   @map("why_changed")
+  howChanged           String   @map("how_changed")
+  filesTouchedJson     Json?    @map("files_touched_json")
+  modulesTouchedJson   Json?    @map("modules_touched_json")
+  commandsRunJson      Json?    @map("commands_run_json")
+  validationResultJson Json?    @map("validation_result_json")
+  risksRemainingJson   Json?    @map("risks_remaining_json")
+  createdBy            String?  @map("created_by") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem             WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("rh_memory_commits")
+  @@schema("recallhub_memory")
+}
+
+model WorkItem {
+  id                String           @id @default(uuid()) @db.Uuid
+  projectId         String           @map("project_id") @db.Uuid
+  title             String
+  originalRequest   String           @map("original_request")
+  requestType       String           @map("request_type")
+  status            WorkItemStatus
+  riskLevel         String           @default("medium") @map("risk_level")
+  priority          String           @default("normal")
+  requestedBy       String?          @map("requested_by") @db.Uuid
+  assignedTo        String?          @map("assigned_to") @db.Uuid
+  openQuestionsJson Json?            @map("open_questions_json")
+  metadataJson      Json?            @map("metadata_json")
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project           Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  artifacts         Artifact[]
+  memoryEvents      MemoryEvent[]
+  memoryCommits     MemoryCommit[]
+  workflowRuns      WorkflowRun[]
+
+  @@index([projectId])
+  @@map("rh_work_items")
+  @@schema("recallhub_work")
+}
+
+model Artifact {
+  id              String   @id @default(uuid()) @db.Uuid
+  projectId       String   @map("project_id") @db.Uuid
+  workItemId      String?  @map("work_item_id") @db.Uuid
+  artifactType    String   @map("artifact_type")
+  title           String
+  contentMarkdown String?  @map("content_markdown")
+  contentJson     Json?    @map("content_json")
+  source          String
+  status          String
+  version         Int      @default(1)
+  hash            String?
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem        WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("rh_artifacts")
+  @@schema("recallhub_work")
+}
+
+model WorkflowDefinition {
+  id               String           @id @default(uuid()) @db.Uuid
+  code             String           @unique
+  name             String
+  executor         WorkflowExecutor
+  n8nPath          String?          @map("n8n_path")
+  inputSchemaJson  Json?            @map("input_schema_json")
+  outputSchemaJson Json?            @map("output_schema_json")
+  active           Boolean          @default(true)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  runs             WorkflowRun[]
+
+  @@map("rh_workflow_definitions")
+  @@schema("recallhub_workflow")
+}
+
+model WorkflowRun {
+  id                   String             @id @default(uuid()) @db.Uuid
+  workflowDefinitionId String             @map("workflow_definition_id") @db.Uuid
+  projectId            String?            @map("project_id") @db.Uuid
+  workItemId           String?            @map("work_item_id") @db.Uuid
+  status               WorkflowRunStatus
+  inputJson            Json?              @map("input_json")
+  outputJson           Json?              @map("output_json")
+  errorJson            Json?              @map("error_json")
+  n8nExecutionId       String?            @map("n8n_execution_id")
+  idempotencyKey       String?            @map("idempotency_key")
+  triggeredBy          String?            @map("triggered_by") @db.Uuid
+  startedAt            DateTime?          @map("started_at") @db.Timestamptz(6)
+  finishedAt           DateTime?          @map("finished_at") @db.Timestamptz(6)
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  workflowDefinition   WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Restrict)
+  project              Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  workItem             WorkItem?          @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  events               WorkflowEvent[]
+
+  @@unique([workflowDefinitionId, idempotencyKey])
+  @@index([projectId])
+  @@map("rh_workflow_runs")
+  @@schema("recallhub_workflow")
+}
+
+model WorkflowEvent {
+  id            String      @id @default(uuid()) @db.Uuid
+  workflowRunId String      @map("workflow_run_id") @db.Uuid
+  eventType     String      @map("event_type")
+  payloadJson   Json?       @map("payload_json")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  workflowRun   WorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+
+  @@index([workflowRunId])
+  @@map("rh_workflow_events")
+  @@schema("recallhub_workflow")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  projectId     String?  @map("project_id") @db.Uuid
+  actorId       String?  @map("actor_id") @db.Uuid
+  action        String
+  resourceType  String   @map("resource_type")
+  resourceId    String?  @map("resource_id") @db.Uuid
+  outcome       String
+  reason        String?
+  metadataJson  Json?    @map("metadata_json")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  project       Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("rh_audit_logs")
+  @@schema("recallhub_audit")
+}
+
+model N8nArtifactInbox {
+  id           String   @id @default(uuid()) @db.Uuid
+  runId        String   @map("run_id") @db.Uuid
+  workflowCode String   @map("workflow_code")
+  signature    String
+  payloadJson  Json     @map("payload_json")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([runId, workflowCode, signature])
+  @@map("n8n_artifact_inbox")
+  @@schema("recallhub_inbox")
+}

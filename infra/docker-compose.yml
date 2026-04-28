@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-recallhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Aa123456}
+      POSTGRES_DB: ${POSTGRES_DB:-recallhub_db}
+      N8N_DB_USER: ${N8N_DB_USER:-n8n}
+      N8N_DB_PASSWORD: ${N8N_DB_PASSWORD:-Aa123456}
+      N8N_DB_NAME: ${N8N_DB_NAME:-n8n_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "15432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: ../api
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-recallhub}:${POSTGRES_PASSWORD:-Aa123456}@postgres:5432/${POSTGRES_DB:-recallhub_db}
+      REDIS_URL: redis://redis:6379
+      N8N_INTERNAL_BASE_URL: http://n8n:5678
+      N8N_CALLBACK_SECRET: ${N8N_CALLBACK_SECRET:-change_me_callback_secret}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-change_me_jwt_secret}
+      ALLOWED_REPO_ROOTS: ${ALLOWED_REPO_ROOTS:-/workspace/repos}
+    volumes:
+      - ../repos:/workspace/repos:ro
+    ports:
+      - "3000:3000"
+
+  n8n:
+    image: n8nio/n8n:stable
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${N8N_DB_NAME:-n8n_db}
+      DB_POSTGRESDB_USER: ${N8N_DB_USER:-n8n}
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD:-Aa123456}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change_me_32_chars_minimum_local}
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      GENERIC_TIMEZONE: Asia/Tehran
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"
+
+  appsmith:
+    image: appsmith/appsmith-ce:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - appsmith_stacks:/appsmith-stacks
+
+volumes:
+  postgres_data:
+  n8n_data:
+  appsmith_stacks:
