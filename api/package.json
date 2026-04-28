@@ -11,7 +11,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:validate": "prisma validate",
-    "db:apply:local": "docker exec -i infra-postgres-1 psql -U recallhub -d recallhub_db -f - < prisma/migrations/20260428000000_init_recallhub/migration.sql",
+    "db:apply:local": "for file in prisma/migrations/*/migration.sql; do docker exec -i infra-postgres-1 psql -U recallhub -d recallhub_db -f - < \"$file\"; done",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
