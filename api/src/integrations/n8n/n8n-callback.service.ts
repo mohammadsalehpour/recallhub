@@ -7,10 +7,14 @@ import { Prisma } from '../../generated/prisma/client';
 import { WorkflowRunStatus } from '../../generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
 import { N8nCallbackDto } from './dto/n8n-callback.dto';
+import { WorkItemsService } from '../../work-items/work-items.service';
 
 @Injectable()
 export class N8nCallbackService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workItemsService: WorkItemsService,
+  ) {}
 
   async handleCallback(dto: N8nCallbackDto) {
     const run = await this.prisma.workflowRun.findUnique({
@@ -88,6 +92,16 @@ export class N8nCallbackService {
       },
       include: { events: true },
     });
+
+    if (run.workItemId) {
+      await this.workItemsService.applyWorkflowOutcome({
+        workItemId: run.workItemId,
+        workflowCode: run.workflowDefinition.code,
+        runId: run.id,
+        succeeded: dto.status === 'succeeded',
+        artifactId: artifact?.id,
+      });
+    }
 
     return { success: true, data: { workflowRun: updated, artifact } };
   }

@@ -9,6 +9,7 @@ import { MemoryModule } from './memory/memory.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { RepositoryModule } from './repository/repository.module';
+import { WorkItemsModule } from './work-items/work-items.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 
 @Module({
@@ -24,6 +25,7 @@ import { WorkflowsModule } from './workflows/workflows.module';
     MemoryModule,
     N8nModule,
     WorkflowsModule,
+    WorkItemsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
