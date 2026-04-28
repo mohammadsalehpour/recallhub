@@ -33,3 +33,9 @@ The local Postgres password is `Aa123456` as configured for this development env
 Postgres is exposed on host port `15432` to avoid colliding with an existing local Postgres on `5432`.
 
 Note: Prisma 7.8 currently validates and generates SQL for this multi-schema setup, but `migrate dev`/`db push` returned a generic schema engine error in this local run. The checked-in initial migration SQL was generated with `prisma migrate diff` and applied through `psql` for now.
+
+## Next tracks (non-NestJS)
+
+- `n8n/`: contract-first n8n development assets (artifact schemas + callback template workflow).
+- `appsmith/`: Appsmith page/query development plan aligned with current API surface.
+

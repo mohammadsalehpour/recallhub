@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://recallhub.dev/contracts/n8n/project-scan-artifact.schema.json",
+  "title": "ProjectScanArtifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["repository", "modules", "files"],
+  "properties": {
+    "repository": {
+      "type": "object",
+      "required": ["repoRoot"],
+      "properties": {
+        "repoRoot": { "type": "string" },
+        "branch": { "type": "string" },
+        "commitSha": { "type": "string" }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["moduleName", "modulePath", "moduleType"],
+        "properties": {
+          "moduleName": { "type": "string" },
+          "modulePath": { "type": "string" },
+          "moduleType": { "type": "string" },
+          "depends": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["filePath", "contentHash"],
+        "properties": {
+          "filePath": { "type": "string" },
+          "contentHash": { "type": "string" },
+          "fileKind": { "type": "string" },
+          "containsSecrets": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

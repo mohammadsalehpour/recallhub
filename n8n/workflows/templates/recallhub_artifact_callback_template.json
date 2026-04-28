@@ -1,0 +1,67 @@
+{
+  "name": "RecallHub Artifact Callback Template",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "runId", "value": "={{$json.runId || '00000000-0000-0000-0000-000000000000'}}" },
+            { "name": "workflowCode", "value": "={{$json.workflowCode || 'document.generate_spec'}}" },
+            { "name": "status", "value": "succeeded" },
+            { "name": "n8nExecutionId", "value": "={{$execution.id}}" }
+          ],
+          "json": [
+            {
+              "name": "artifact",
+              "value": "={{ { type: 'development_spec', title: 'Generated spec', contentMarkdown: '# Development Spec', contentJson: { summary: 'auto-generated' } } }}"
+            }
+          ]
+        }
+      },
+      "id": "build-artifact",
+      "name": "Build Artifact",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl || 'http://api:3000/api/v1/integrations/n8n/callback'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-recallhub-timestamp", "value": "={{$now.toSeconds().toString()}}" },
+            { "name": "x-recallhub-run-id", "value": "={{$json.runId}}" },
+            { "name": "x-recallhub-signature", "value": "={{$json.signature || ''}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { runId: $json.runId, workflowCode: $json.workflowCode, status: $json.status, n8nExecutionId: $json.n8nExecutionId, artifact: $json.artifact } }}"
+      },
+      "id": "post-callback",
+      "name": "POST Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Build Artifact", "type": "main", "index": 0 }]]
+    },
+    "Build Artifact": {
+      "main": [[{ "node": "POST Callback", "type": "main", "index": 0 }]]
+    }
+  }
+}
