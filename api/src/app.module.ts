@@ -10,6 +10,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { RepositoryModule } from './repository/repository.module';
 import { WorkItemsModule } from './work-items/work-items.module';
+import { StabilizationModule } from './stabilization/stabilization.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { WorkflowsModule } from './workflows/workflows.module';
     N8nModule,
     WorkflowsModule,
     WorkItemsModule,
+    StabilizationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
