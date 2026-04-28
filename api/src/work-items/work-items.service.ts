@@ -1,16 +1,30 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client';
+import {
+  WorkItemStatus,
+  WorkflowRunStatus,
+} from '../generated/prisma/enums';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { WorkItemStatus } from '../generated/prisma/enums';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
+import { CreateMemoryCommitDto } from './dto/create-memory-commit.dto';
+import { HumanApprovalDto } from './dto/human-approval.dto';
+import { StartWorkflowDto } from './dto/start-workflow.dto';
 
 const SUCCESS_STATUS_TRANSITIONS: Record<string, WorkItemStatus> = {
-  'task.analyze': WorkItemStatus.research_ready,
+  'task.analyze': WorkItemStatus.needs_research,
   'research.run': WorkItemStatus.research_ready,
   'document.generate_spec': WorkItemStatus.spec_review,
   'document.review': WorkItemStatus.needs_human_approval,
-  'document.finalize': WorkItemStatus.approved_for_implementation,
+  'document.finalize': WorkItemStatus.needs_human_approval,
   'document.revise': WorkItemStatus.spec_review,
+  'implementation.plan': WorkItemStatus.implementation_planning,
+  'execution.simulate': WorkItemStatus.done_pending_memory_commit,
 };
 
 @Injectable()
@@ -33,21 +47,16 @@ export class WorkItemsService {
         priority: dto.priority ?? 'normal',
         requestedBy: dto.requested_by,
         openQuestionsJson: dto.open_questions,
-        metadataJson: dto.metadata,
+        metadataJson: dto.metadata as Prisma.InputJsonValue | undefined,
       },
     });
 
-    await this.prisma.memoryEvent.create({
-      data: {
-        projectId: project.id,
-        workItemId: workItem.id,
-        eventType: 'work_item.created',
-        summary: `Work item ${workItem.title} created`,
-        afterJson: {
-          workItemId: workItem.id,
-          status: workItem.status,
-        },
-      },
+    await this.createWorkItemEvent({
+      projectId: project.id,
+      workItemId: workItem.id,
+      eventType: 'work_item.created',
+      summary: `Work item ${workItem.title} created`,
+      afterJson: { status: workItem.status },
     });
 
     await this.audit.record({
@@ -56,9 +65,7 @@ export class WorkItemsService {
       action: 'work_item.create',
       resourceType: 'work_item',
       resourceId: workItem.id,
-      metadataJson: {
-        requestType: dto.request_type,
-      },
+      metadataJson: { requestType: dto.request_type },
     });
 
     return { success: true, data: workItem };
@@ -73,23 +80,7 @@ export class WorkItemsService {
   }
 
   async getContextPacket(workItemId: string) {
-    const workItem = await this.prisma.workItem.findUnique({
-      where: { id: workItemId },
-      include: {
-        project: {
-          include: {
-            techStack: true,
-            repositories: true,
-            paths: true,
-            configFiles: true,
-          },
-        },
-      },
-    });
-
-    if (!workItem) {
-      throw new NotFoundException('Work item not found');
-    }
+    const workItem = await this.requireWorkItem(workItemId);
 
     const [recentArtifacts, recentMemoryEvents, recentModules] =
       await Promise.all([
@@ -125,6 +116,117 @@ export class WorkItemsService {
     };
   }
 
+  async startResearch(workItemId: string, dto: StartWorkflowDto) {
+    const workItem = await this.requireWorkItem(workItemId);
+    this.assertStatus(workItem.status, [
+      WorkItemStatus.needs_research,
+      WorkItemStatus.research_ready,
+    ]);
+
+    const run = await this.startWorkflowRun(workItem, 'research.run', dto);
+    await this.transitionStatus(workItem, WorkItemStatus.research_in_progress, {
+      workflowCode: 'research.run',
+      runId: run.id,
+    });
+
+    return { success: true, data: { workflowRun: run } };
+  }
+
+  async startSpecGeneration(workItemId: string, dto: StartWorkflowDto) {
+    const workItem = await this.requireWorkItem(workItemId);
+    this.assertStatus(workItem.status, [
+      WorkItemStatus.research_ready,
+      WorkItemStatus.spec_review,
+    ]);
+
+    const run = await this.startWorkflowRun(
+      workItem,
+      'document.generate_spec',
+      dto,
+    );
+    await this.transitionStatus(workItem, WorkItemStatus.spec_drafting, {
+      workflowCode: 'document.generate_spec',
+      runId: run.id,
+    });
+
+    return { success: true, data: { workflowRun: run } };
+  }
+
+  async submitHumanApproval(workItemId: string, dto: HumanApprovalDto) {
+    const workItem = await this.requireWorkItem(workItemId);
+    this.assertStatus(workItem.status, [WorkItemStatus.needs_human_approval]);
+
+    const nextStatus =
+      dto.decision === 'approve'
+        ? WorkItemStatus.approved_for_implementation
+        : WorkItemStatus.rejected;
+
+    const updated = await this.transitionStatus(workItem, nextStatus, {
+      reason: dto.reason,
+      actorId: dto.actor_id,
+    });
+
+    await this.audit.record({
+      projectId: updated.projectId,
+      actorId: dto.actor_id,
+      action: 'work_item.human_approval',
+      resourceType: 'work_item',
+      resourceId: updated.id,
+      metadataJson: { decision: dto.decision, reason: dto.reason },
+    });
+
+    return { success: true, data: updated };
+  }
+
+  async completeWithMemoryCommit(
+    workItemId: string,
+    dto: CreateMemoryCommitDto,
+  ) {
+    const workItem = await this.requireWorkItem(workItemId);
+    this.assertStatus(workItem.status, [WorkItemStatus.done_pending_memory_commit]);
+
+    const commit = await this.prisma.memoryCommit.create({
+      data: {
+        projectId: workItem.projectId,
+        workItemId: workItem.id,
+        title: dto.title,
+        whatChanged: dto.what_changed,
+        whyChanged: dto.why_changed,
+        howChanged: dto.how_changed,
+        filesTouchedJson: dto.files_touched as Prisma.InputJsonValue | undefined,
+        modulesTouchedJson: dto.modules_touched as
+          | Prisma.InputJsonValue
+          | undefined,
+        commandsRunJson: dto.commands_run as Prisma.InputJsonValue | undefined,
+        validationResultJson: dto.validation_result as
+          | Prisma.InputJsonValue
+          | undefined,
+        risksRemainingJson: dto.risks_remaining as
+          | Prisma.InputJsonValue
+          | undefined,
+        createdBy: dto.created_by,
+      },
+    });
+
+    const updated = await this.transitionStatus(workItem, WorkItemStatus.completed, {
+      memoryCommitId: commit.id,
+      actorId: dto.created_by,
+    });
+
+    await this.audit.record({
+      projectId: updated.projectId,
+      actorId: dto.created_by,
+      action: 'work_item.memory_commit.complete',
+      resourceType: 'memory_commit',
+      resourceId: commit.id,
+      metadataJson: {
+        workItemId: updated.id,
+      },
+    });
+
+    return { success: true, data: { workItem: updated, memoryCommit: commit } };
+  }
+
   async applyWorkflowOutcome(params: {
     workItemId: string;
     workflowCode: string;
@@ -148,41 +250,111 @@ export class WorkItemsService {
       return;
     }
 
-    const updated = await this.prisma.workItem.update({
-      where: { id: workItem.id },
-      data: { status: nextStatus },
+    await this.transitionStatus(workItem, nextStatus, {
+      workflowCode: params.workflowCode,
+      runId: params.runId,
+      artifactId: params.artifactId,
+      failed: !params.succeeded,
+    });
+  }
+
+  private async startWorkflowRun(
+    workItem: Awaited<ReturnType<WorkItemsService['requireWorkItem']>>,
+    workflowCode: string,
+    dto: StartWorkflowDto,
+  ) {
+    const definition = await this.prisma.workflowDefinition.findUnique({
+      where: { code: workflowCode },
     });
 
-    await this.prisma.memoryEvent.create({
+    if (!definition || !definition.active) {
+      throw new NotFoundException('Workflow definition not found or inactive');
+    }
+
+    if (dto.idempotency_key) {
+      const existing = await this.prisma.workflowRun.findUnique({
+        where: {
+          workflowDefinitionId_idempotencyKey: {
+            workflowDefinitionId: definition.id,
+            idempotencyKey: dto.idempotency_key,
+          },
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException({
+          code: 'DUPLICATE_IDEMPOTENCY_KEY',
+          workflowRunId: existing.id,
+        });
+      }
+    }
+
+    const contextPacket = await this.getContextPacket(workItem.id);
+
+    const run = await this.prisma.workflowRun.create({
       data: {
-        projectId: updated.projectId,
-        workItemId: updated.id,
-        eventType: params.succeeded
-          ? 'work_item.workflow.transition.succeeded'
-          : 'work_item.workflow.transition.failed',
-        summary: `Workflow ${params.workflowCode} moved work item to ${nextStatus}`,
-        beforeJson: { status: workItem.status },
-        afterJson: {
-          status: nextStatus,
-          runId: params.runId,
-          artifactId: params.artifactId,
+        workflowDefinitionId: definition.id,
+        projectId: workItem.projectId,
+        workItemId: workItem.id,
+        status: WorkflowRunStatus.pending,
+        idempotencyKey: dto.idempotency_key,
+        triggeredBy: dto.triggered_by,
+        inputJson: {
+          context_packet: contextPacket.data,
+          ...(dto.input ?? {}),
+        } as Prisma.InputJsonValue,
+        events: {
+          create: {
+            eventType: 'workflow_run.created',
+            payloadJson: { workflowCode: workflowCode, workItemId: workItem.id },
+          },
         },
       },
     });
 
     await this.audit.record({
-      projectId: updated.projectId,
-      action: 'work_item.status.transition',
-      resourceType: 'work_item',
-      resourceId: updated.id,
+      projectId: workItem.projectId,
+      actorId: dto.triggered_by,
+      action: 'work_item.workflow.start',
+      resourceType: 'workflow_run',
+      resourceId: run.id,
       metadataJson: {
-        workflowCode: params.workflowCode,
-        runId: params.runId,
-        beforeStatus: workItem.status,
-        afterStatus: nextStatus,
-        artifactId: params.artifactId,
+        workflowCode,
+        workItemId: workItem.id,
       },
     });
+
+    return run;
+  }
+
+  private async transitionStatus(
+    workItem: { id: string; projectId: string; status: WorkItemStatus },
+    nextStatus: WorkItemStatus,
+    metadata: Record<string, unknown>,
+  ) {
+    const updated = await this.prisma.workItem.update({
+      where: { id: workItem.id },
+      data: { status: nextStatus },
+    });
+
+    await this.createWorkItemEvent({
+      projectId: updated.projectId,
+      workItemId: updated.id,
+      eventType: 'work_item.status.transition',
+      summary: `Work item moved from ${workItem.status} to ${nextStatus}`,
+      beforeJson: { status: workItem.status },
+      afterJson: { status: nextStatus, ...metadata },
+    });
+
+    return updated;
+  }
+
+  private assertStatus(current: WorkItemStatus, allowed: WorkItemStatus[]) {
+    if (!allowed.includes(current)) {
+      throw new BadRequestException(
+        `Current work item status ${current} does not allow this action`,
+      );
+    }
   }
 
   private async requireProject(projectCode: string) {
@@ -195,5 +367,47 @@ export class WorkItemsService {
     }
 
     return project;
+  }
+
+  private async requireWorkItem(workItemId: string) {
+    const workItem = await this.prisma.workItem.findUnique({
+      where: { id: workItemId },
+      include: {
+        project: {
+          include: {
+            techStack: true,
+            repositories: true,
+            paths: true,
+            configFiles: true,
+          },
+        },
+      },
+    });
+
+    if (!workItem) {
+      throw new NotFoundException('Work item not found');
+    }
+
+    return workItem;
+  }
+
+  private async createWorkItemEvent(args: {
+    projectId: string;
+    workItemId: string;
+    eventType: string;
+    summary: string;
+    beforeJson?: Record<string, unknown>;
+    afterJson?: Record<string, unknown>;
+  }) {
+    await this.prisma.memoryEvent.create({
+      data: {
+        projectId: args.projectId,
+        workItemId: args.workItemId,
+        eventType: args.eventType,
+        summary: args.summary,
+        beforeJson: args.beforeJson as Prisma.InputJsonValue | undefined,
+        afterJson: args.afterJson as Prisma.InputJsonValue | undefined,
+      },
+    });
   }
 }
