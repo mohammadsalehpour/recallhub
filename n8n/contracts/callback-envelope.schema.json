@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://recallhub.dev/contracts/n8n/callback-envelope.schema.json",
+  "title": "RecallHub n8n Callback Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["runId", "workflowCode", "status"],
+  "properties": {
+    "runId": { "type": "string", "format": "uuid" },
+    "workflowCode": {
+      "type": "string",
+      "enum": [
+        "project.scan",
+        "task.analyze",
+        "research.run",
+        "document.generate_spec",
+        "document.review",
+        "document.finalize",
+        "document.revise",
+        "implementation.plan",
+        "execution.simulate"
+      ]
+    },
+    "status": { "type": "string", "enum": ["succeeded", "failed"] },
+    "n8nExecutionId": { "type": "string", "minLength": 1 },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "scan_result",
+            "research_plan",
+            "research_findings",
+            "development_spec",
+            "review",
+            "final_document",
+            "implementation_plan",
+            "validation_report",
+            "handover"
+          ]
+        },
+        "title": { "type": "string" },
+        "contentMarkdown": { "type": "string" },
+        "contentJson": { "type": "object" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "details": {}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "succeeded" } }, "required": ["status"] },
+      "then": { "required": ["artifact"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failed" } }, "required": ["status"] },
+      "then": { "required": ["error"] }
+    }
+  ]
+}

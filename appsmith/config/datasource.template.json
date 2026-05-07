@@ -1,0 +1,14 @@
+{
+  "name": "RecallHubAPI",
+  "pluginType": "REST_API",
+  "baseUrl": "{{appsmith.store.apiBaseUrl || 'http://api:3000/api/v1'}}",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer {{appsmith.store.token}}"
+  },
+  "timeoutMs": 30000,
+  "notes": [
+    "Do not point this datasource to n8n directly.",
+    "All actions must pass through NestJS API."
+  ]
+}

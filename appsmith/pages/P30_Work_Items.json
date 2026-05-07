@@ -1,0 +1,58 @@
+{
+  "pageName": "P30_Work_Items",
+  "purpose": "Create and operate WorkItems through backend-owned state transitions.",
+  "onPageLoad": ["JS_AppShell.startupFromUrl", "qWorkItemList.run"],
+  "layout": [
+    {
+      "section": "List",
+      "widgets": [
+        { "name": "tblWorkItems", "type": "Table", "data": "{{qWorkItemList.data}}", "onRowSelected": "JS_WorkItemFlow.selectWorkItem(tblWorkItems.selectedRow)" },
+        { "name": "jsonContextPacket", "type": "JSONForm", "sourceData": "{{qWorkItemContext.data}}" }
+      ]
+    },
+    {
+      "section": "Create",
+      "widgets": [
+        { "name": "inpWorkItemTitle", "type": "Input", "required": true },
+        { "name": "inpWorkItemRequest", "type": "Input", "required": true, "inputType": "multiline" },
+        { "name": "selRequestType", "type": "Select", "required": true, "options": ["bugfix", "feature", "research", "refactor", "ops", "documentation"] },
+        { "name": "selRiskLevel", "type": "Select", "options": ["low", "medium", "high", "critical"] },
+        { "name": "selPriority", "type": "Select", "options": ["low", "normal", "high", "urgent"] },
+        { "name": "tblOpenQuestions", "type": "Table", "editable": true, "columns": ["question"] },
+        { "name": "btnCreateWorkItem", "type": "Button", "onClick": "JS_WorkItemFlow.createWorkItem()" }
+      ]
+    },
+    {
+      "section": "Actions",
+      "widgets": [
+        { "name": "btnStartResearch", "type": "Button", "disabled": "{{!JS_WorkItemFlow.can('research')}}", "tooltip": "{{JS_WorkItemFlow.actionTooltip('research')}}", "onClick": "JS_WorkItemFlow.startResearch()" },
+        { "name": "btnStartSpec", "type": "Button", "disabled": "{{!JS_WorkItemFlow.can('spec')}}", "tooltip": "{{JS_WorkItemFlow.actionTooltip('spec')}}", "onClick": "JS_WorkItemFlow.startSpec()" },
+        { "name": "selApprovalDecision", "type": "Select", "options": ["approve", "approve_with_waiver", "reject"] },
+        { "name": "inpApprovalReason", "type": "Input", "inputType": "multiline" },
+        { "name": "btnApprove", "type": "Button", "disabled": "{{!JS_WorkItemFlow.can('approval')}}", "tooltip": "{{JS_WorkItemFlow.actionTooltip('approval')}}", "onClick": "JS_WorkItemFlow.submitApproval('approve')" },
+        { "name": "btnApproveWaiver", "type": "Button", "disabled": "{{!JS_WorkItemFlow.can('approval')}}", "tooltip": "{{JS_WorkItemFlow.actionTooltip('approval')}}", "onClick": "JS_WorkItemFlow.submitApproval('approve_with_waiver')" },
+        { "name": "btnReject", "type": "Button", "disabled": "{{!JS_WorkItemFlow.can('approval')}}", "tooltip": "{{JS_WorkItemFlow.actionTooltip('approval')}}", "onClick": "JS_WorkItemFlow.submitApproval('reject')" },
+        { "name": "btnImplementationPlan", "type": "Button", "disabled": "{{!JS_WorkItemFlow.can('implementationPlan')}}", "tooltip": "{{JS_WorkItemFlow.actionTooltip('implementationPlan')}}", "onClick": "JS_WorkItemFlow.createImplementationPlan()" },
+        { "name": "btnExecutionSimulate", "type": "Button", "disabled": "{{!JS_WorkItemFlow.can('executionSimulation')}}", "tooltip": "{{JS_WorkItemFlow.actionTooltip('executionSimulation')}}", "onClick": "JS_WorkItemFlow.simulateExecution()" }
+      ]
+    },
+    {
+      "section": "Memory Commit",
+      "widgets": [
+        { "name": "inpCommitTitle", "type": "Input", "required": true },
+        { "name": "inpWhatChanged", "type": "Input", "required": true, "inputType": "multiline" },
+        { "name": "inpWhyChanged", "type": "Input", "required": true, "inputType": "multiline" },
+        { "name": "inpHowChanged", "type": "Input", "required": true, "inputType": "multiline" },
+        { "name": "tblFilesTouched", "type": "Table", "editable": true, "columns": ["path"] },
+        { "name": "tblModulesTouched", "type": "Table", "editable": true, "columns": ["module"] },
+        { "name": "tblCommandsRun", "type": "Table", "editable": true, "columns": ["command"] },
+        { "name": "selValidationStatus", "type": "Select", "options": ["unknown", "passed", "failed", "partial", "not_run"] },
+        { "name": "inpValidationSummary", "type": "Input", "inputType": "multiline" },
+        { "name": "tblRisksRemaining", "type": "Table", "editable": true, "columns": ["risk"] },
+        { "name": "btnMemoryCommit", "type": "Button", "disabled": "{{!JS_WorkItemFlow.can('memoryCommit')}}", "tooltip": "{{JS_WorkItemFlow.actionTooltip('memoryCommit')}}", "onClick": "JS_WorkItemFlow.submitMemoryCommit()" }
+      ]
+    }
+  ],
+  "queries": ["qWorkItemList", "qWorkItemCreate", "qWorkItemContext", "qWorkItemResearchStart", "qWorkItemSpecStart", "qWorkItemApproval", "qWorkItemImplementationPlan", "qWorkItemExecutionSimulate", "qWorkItemMemoryCommit"],
+  "jsObjects": ["JS_AppShell", "JS_WorkItemFlow", "JS_RunMonitor"]
+}

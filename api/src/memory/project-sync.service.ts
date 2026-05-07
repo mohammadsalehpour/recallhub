@@ -126,6 +126,29 @@ export class ProjectSyncService {
       });
     }
 
+    const inFlight = await this.prisma.workflowRun.findFirst({
+      where: {
+        workflowDefinitionId: definition.id,
+        projectId: project.id,
+        status: {
+          in: [
+            WorkflowRunStatus.pending,
+            WorkflowRunStatus.queued,
+            WorkflowRunStatus.running,
+            WorkflowRunStatus.retrying,
+          ],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (inFlight) {
+      throw new ConflictException({
+        code: 'PROJECT_SYNC_ALREADY_RUNNING',
+        workflowRunId: inFlight.id,
+      });
+    }
+
     const repoRoot = this.pathResolver.resolveUserPath(repository.repoRoot);
     const run = await this.prisma.workflowRun.create({
       data: {

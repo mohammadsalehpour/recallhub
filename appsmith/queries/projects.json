@@ -1,0 +1,100 @@
+[
+  {
+    "name": "qProjectList",
+    "method": "GET",
+    "path": "/projects"
+  },
+  {
+    "name": "qProjectGet",
+    "method": "GET",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}"
+  },
+  {
+    "name": "qProjectTechStack",
+    "method": "GET",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/tech-stack"
+  },
+  {
+    "name": "qRepositoryList",
+    "method": "GET",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/repositories"
+  },
+  {
+    "name": "qPathList",
+    "method": "GET",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/paths"
+  },
+  {
+    "name": "qConfigList",
+    "method": "GET",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/config-files"
+  },
+  {
+    "name": "qProjectCreate",
+    "method": "POST",
+    "path": "/projects",
+    "bodyTemplate": {
+      "project_code": "{{inpProjectCode.text}}",
+      "name": "{{inpProjectName.text}}",
+      "description": "{{inpProjectDescription.text}}",
+      "business_domain": "{{selBusinessDomain.selectedOptionValue}}",
+      "primary_framework": {
+        "name": "{{inpFrameworkName.text}}",
+        "version": "{{inpFrameworkVersion.text}}"
+      },
+      "tech_stack": "{{JS_ProjectFlow.normalizedTechStack()}}"
+    }
+  },
+  {
+    "name": "qRepoCreate",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/repositories",
+    "bodyTemplate": {
+      "repo_name": "{{inpRepoName.text}}",
+      "locator_type": "{{selRepoLocatorType.selectedOptionValue}}",
+      "repo_root": "{{inpRepoRoot.text}}",
+      "default_branch": "{{inpDefaultBranch.text || undefined}}",
+      "is_primary": true
+    }
+  },
+  {
+    "name": "qRepoValidate",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/repositories/{{appsmith.store.activeRepositoryId || tblRepositories.selectedRow.id}}/validate"
+  },
+  {
+    "name": "qPathCreate",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/paths",
+    "bodyTemplate": {
+      "repository_id": "{{appsmith.store.activeRepositoryId || tblRepositories.selectedRow.id}}",
+      "path": "{{inpPath.text}}",
+      "path_type": "{{selPathType.selectedOptionValue}}",
+      "label": "{{inpPathLabel.text || undefined}}",
+      "is_required": "{{chkPathRequired.isChecked}}",
+      "scan_policy": "{{selScanPolicy.selectedOptionValue}}",
+      "ownership": "{{selOwnership.selectedOptionValue}}"
+    }
+  },
+  {
+    "name": "qConfigCreate",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/config-files",
+    "bodyTemplate": {
+      "repository_id": "{{appsmith.store.activeRepositoryId || tblRepositories.selectedRow.id}}",
+      "relative_path": "{{inpConfigRelativePath.text}}",
+      "config_type": "{{inpConfigType.text}}",
+      "required": "{{chkConfigRequired.isChecked}}",
+      "contains_secrets": "{{selContainsSecrets.selectedOptionValue}}",
+      "scan_policy": "{{selConfigScanPolicy.selectedOptionValue}}"
+    }
+  },
+  {
+    "name": "qProjectSync",
+    "method": "POST",
+    "path": "/projects/{{appsmith.store.activeProjectCode}}/sync",
+    "headers": {
+      "idempotency-key": "{{appsmith.store.syncIdempotencyKey}}"
+    }
+  }
+]

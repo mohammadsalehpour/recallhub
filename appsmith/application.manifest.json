@@ -1,0 +1,45 @@
+{
+  "name": "RecallHub Control Plane",
+  "version": "1.0.0",
+  "type": "appsmith_implementation_manifest",
+  "importFile": "RecallHub_Control_Plane.json",
+  "generator": "scripts/generate_appsmith_export.mjs",
+  "datasource": "RecallHubAPI",
+  "baseUrl": "{{appsmith.store.apiBaseUrl || 'http://api:3000/api/v1'}}",
+  "storeContract": [
+    "token",
+    "apiBaseUrl",
+    "activeProjectCode",
+    "activeProjectId",
+    "activeRepositoryId",
+    "activeWorkItemId",
+    "activeWorkItemStatus",
+    "activeRunId",
+    "activeRole",
+    "activeUserId",
+    "syncIdempotencyKey",
+    "workItemActionKey",
+    "workflowIdempotencyKey"
+  ],
+  "urlState": {
+    "project": "activeProjectCode",
+    "workItem": "activeWorkItemId",
+    "run": "activeRunId"
+  },
+  "pages": [
+    "P01_Login",
+    "P10_Project_Setup_Wizard",
+    "P20_Project_Memory",
+    "P30_Work_Items",
+    "P40_Workflow_Runs_Monitor",
+    "P50_Stability_Dashboard",
+    "P60_Audit_Timeline"
+  ],
+  "rules": [
+    "Appsmith calls only the NestJS RecallHubAPI datasource.",
+    "No n8n URL, database datasource, or domain table write is allowed.",
+    "No hidden domain defaults are set for project_code, repo_root, framework, version, paths, or config files.",
+    "Work item buttons are UI-gated by backend status, and backend remains the source of truth.",
+    "Admin reconcile is role-gated and requires a confirmation modal."
+  ]
+}

@@ -1,0 +1,209 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - link "Appsmith logo" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "Appsmith logo" [ref=e10]
+      - generic [ref=e1303] [cursor=pointer]:
+        - generic [ref=e1304]: Pages /
+        - generic [ref=e1305]:
+          - generic [ref=e1306]: Page1
+          - img [ref=e1308]
+    - generic [ref=e11]:
+      - link "Mohammad's apps" [ref=e56] [cursor=pointer]:
+        - /url: /applications?workspaceId=69f0b2df6d4d1d52a856b05e
+        - generic [ref=e57]: Mohammad's apps
+      - text: /
+      - generic [ref=e58] [cursor=pointer]:
+        - generic [ref=e62]: RecallHub Control Plane
+        - img [ref=e64]
+    - generic [ref=e12]:
+      - button "⌘ K" [ref=e13] [cursor=pointer]:
+        - img [ref=e15]
+        - generic [ref=e17]: ⌘ K
+      - button [ref=e19] [cursor=pointer]:
+        - img [ref=e21]
+      - button "Share" [ref=e23] [cursor=pointer]:
+        - generic [ref=e24]:
+          - img [ref=e26]
+          - generic [ref=e28]: Share
+      - generic [ref=e29]:
+        - button "Deploy" [ref=e31] [cursor=pointer]:
+          - generic [ref=e32]:
+            - img [ref=e34]
+            - generic [ref=e36]: Deploy
+        - button [ref=e37] [cursor=pointer]:
+          - img [ref=e40]
+  - generic [ref=e67]:
+    - generic [ref=e69]:
+      - generic [ref=e71]:
+        - generic [ref=e73]:
+          - button [ref=e74] [cursor=pointer]:
+            - img [ref=e76]
+          - generic [ref=e79]: Editor
+        - generic [ref=e80]:
+          - button [ref=e82] [cursor=pointer]:
+            - img [ref=e84]
+            - img [ref=e87]
+          - button [ref=e90] [cursor=pointer]:
+            - img [ref=e92]
+          - button [ref=e97] [cursor=pointer]:
+            - img [ref=e99]
+      - generic [ref=e1310]:
+        - generic [ref=e1311]:
+          - generic [ref=e1313]:
+            - generic [ref=e1315] [cursor=pointer]:
+              - img [ref=e1317]
+              - generic [ref=e1321]: Queries
+            - generic [ref=e1323] [cursor=pointer]:
+              - img [ref=e1325]
+              - generic [ref=e1327]: JS
+            - generic [ref=e1329] [cursor=pointer]:
+              - img [ref=e1331]
+              - generic [ref=e1333]: UI
+          - generic [ref=e1335]:
+            - generic [ref=e1336]:
+              - generic [ref=e1339]:
+                - img [ref=e1341]
+                - textbox "Search" [ref=e1343]
+              - button "Add" [ref=e1344] [cursor=pointer]:
+                - img [ref=e1347]
+            - generic [ref=e1353]:
+              - generic [ref=e1354]: APIs
+              - listitem [ref=e1356] [cursor=pointer]:
+                - generic [ref=e1358]:
+                  - generic [ref=e1360]: GET
+                  - generic [ref=e1361]: Api1
+        - generic [ref=e1362]:
+          - generic [ref=e1363]:
+            - generic [ref=e1364]:
+              - tablist [ref=e1367]:
+                - generic [ref=e1369] [cursor=pointer]:
+                  - generic [ref=e1370]:
+                    - img [ref=e1371]
+                    - generic [ref=e1372]: Api1
+                  - tab "Close tab" [ref=e1373]:
+                    - img [ref=e1377]
+              - button "Add new tab" [ref=e1381] [cursor=pointer]:
+                - img [ref=e1384]
+            - button [ref=e1386] [cursor=pointer]:
+              - img [ref=e1389]
+          - generic [ref=e1393]:
+            - button "Run" [disabled] [ref=e1394]:
+              - generic [ref=e1396]: Run
+            - button [ref=e1397] [cursor=pointer]:
+              - img [ref=e1399]
+            - button [ref=e1401] [cursor=pointer]:
+              - img [ref=e1404]
+          - generic [ref=e1407]:
+            - generic [ref=e1408]:
+              - generic [ref=e1409]:
+                - generic [ref=e1411]:
+                  - generic [ref=e1412] [cursor=pointer]:
+                    - combobox [ref=e1414]
+                    - generic "GET"
+                  - generic:
+                    - generic:
+                      - img
+                - generic [ref=e1422]:
+                  - textbox [ref=e1423]
+                  - generic [ref=e1426]:
+                    - generic: https://mock-api.appsmith.com/users
+              - tablist [ref=e1428]:
+                - tab "Headers" [selected] [ref=e1429] [cursor=pointer]:
+                  - generic [ref=e1430]: Headers
+                - tab "Params" [ref=e1431] [cursor=pointer]:
+                  - generic [ref=e1432]: Params
+                - tab "Body" [ref=e1433] [cursor=pointer]:
+                  - generic [ref=e1434]: Body
+                - tab "Pagination" [ref=e1435] [cursor=pointer]:
+                  - generic [ref=e1436]: Pagination
+                - tab "Authentication" [ref=e1437] [cursor=pointer]:
+                  - generic [ref=e1438]: Authentication
+            - tabpanel "Headers" [ref=e1439]:
+              - generic [ref=e1442]:
+                - generic [ref=e1444]: Key
+                - generic [ref=e1446]: Value
+              - generic [ref=e1447]:
+                - generic [ref=e1448]:
+                  - generic [ref=e1456]:
+                    - textbox [ref=e1457]
+                    - generic [ref=e1460]:
+                      - generic: Key 1
+                  - generic [ref=e1469]:
+                    - textbox [ref=e1470]
+                    - generic [ref=e1473]:
+                      - generic: Value 1
+                  - button [ref=e1475] [cursor=pointer]:
+                    - img [ref=e1478]
+                - generic [ref=e1480]:
+                  - generic [ref=e1488]:
+                    - textbox [ref=e1489]
+                    - generic [ref=e1492]:
+                      - generic: Key 2
+                  - generic [ref=e1501]:
+                    - textbox [ref=e1502]
+                    - generic [ref=e1505]:
+                      - generic: Value 2
+                  - button [ref=e1507] [cursor=pointer]:
+                    - img [ref=e1510]
+                - button "Add more" [ref=e1512] [cursor=pointer]:
+                  - generic [ref=e1513]:
+                    - img [ref=e1515]
+                    - generic [ref=e1517]: Add more
+          - generic [ref=e1520]:
+            - generic [ref=e1521]:
+              - tablist [ref=e1522]:
+                - tab "Response" [selected] [ref=e1523] [cursor=pointer]:
+                  - generic [ref=e1524]: Response
+                - tab "Headers" [ref=e1525] [cursor=pointer]:
+                  - generic [ref=e1526]: Headers
+                - tab "Logs" [ref=e1527] [cursor=pointer]:
+                  - generic [ref=e1528]: Logs
+                - tab "Linter" [ref=e1529] [cursor=pointer]:
+                  - generic [ref=e1530]: Linter
+                - tab "State" [ref=e1531] [cursor=pointer]:
+                  - generic [ref=e1532]: State
+              - tabpanel [ref=e1533]:
+                - generic [ref=e1534]:
+                  - img "no-response-yet" [ref=e1535]
+                  - generic [ref=e1536]:
+                    - generic [ref=e1537]: Click ‘Run’ to get a response
+                    - button "Run" [disabled] [ref=e1538]:
+                      - generic [ref=e1540]: Run
+            - button [ref=e1541] [cursor=pointer]:
+              - img [ref=e1544]
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - heading "Drag and drop a widget here" [level=2]
+    - generic [ref=e490]:
+      - generic [ref=e491]:
+        - generic [ref=e493]:
+          - generic [ref=e494] [cursor=pointer]:
+            - combobox [ref=e496]
+            - generic "Production"
+          - generic:
+            - generic:
+              - img
+        - generic [ref=e498] [cursor=pointer]:
+          - img [ref=e500]
+          - button "Connect Git" [ref=e502]:
+            - generic [ref=e504]: Connect Git
+      - generic [ref=e505]:
+        - button "Debug" [ref=e506] [cursor=pointer]:
+          - generic [ref=e507]:
+            - img [ref=e509]
+            - generic [ref=e511]: Debug
+        - button "Help" [ref=e513] [cursor=pointer]:
+          - generic [ref=e514]:
+            - img [ref=e516]
+            - generic [ref=e518]: Help
+  - iframe [ref=e48]:
+    

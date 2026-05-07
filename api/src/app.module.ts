@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ArtifactsModule } from './artifacts/artifacts.module';
+import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './audit/audit.module';
 import { validateEnv } from './config/env.validation';
 import { N8nModule } from './integrations/n8n/n8n.module';
@@ -9,6 +11,8 @@ import { MemoryModule } from './memory/memory.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { RepositoryModule } from './repository/repository.module';
+import { WorkItemsModule } from './work-items/work-items.module';
+import { StabilizationModule } from './stabilization/stabilization.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 
 @Module({
@@ -17,13 +21,17 @@ import { WorkflowsModule } from './workflows/workflows.module';
       isGlobal: true,
       validate: validateEnv,
     }),
+    AuthModule,
     PrismaModule,
     AuditModule,
+    ArtifactsModule,
     RepositoryModule,
     ProjectsModule,
     MemoryModule,
     N8nModule,
     WorkflowsModule,
+    WorkItemsModule,
+    StabilizationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

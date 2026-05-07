@@ -2,4 +2,10 @@ CREATE DATABASE n8n_db;
 CREATE USER n8n WITH PASSWORD 'Aa123456';
 GRANT ALL PRIVILEGES ON DATABASE n8n_db TO n8n;
 
+\connect n8n_db
+GRANT ALL ON SCHEMA public TO n8n;
+ALTER SCHEMA public OWNER TO n8n;
+
+\connect recallhub_db
+
 REVOKE ALL ON DATABASE recallhub_db FROM n8n;

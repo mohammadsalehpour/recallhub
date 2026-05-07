@@ -3,19 +3,19 @@ import { IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
 export class RunWorkflowDto {
   @IsOptional()
   @IsString()
-  idempotency_key?: string;
+  idempotencyKey?: string;
 
   @IsOptional()
   @IsUUID()
-  project_id?: string;
+  projectId?: string;
 
   @IsOptional()
   @IsUUID()
-  work_item_id?: string;
+  workItemId?: string;
 
   @IsOptional()
   @IsUUID()
-  triggered_by?: string;
+  triggeredBy?: string;
 
   @IsOptional()
   @IsObject()

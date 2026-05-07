@@ -3,7 +3,11 @@ type Env = Record<string, string | undefined>;
 const requiredKeys = [
   'DATABASE_URL',
   'APP_JWT_SECRET',
+  'APP_API_KEY',
+  'N8N_TRIGGER_SECRET',
   'N8N_CALLBACK_SECRET',
+  'N8N_CALLBACK_URL',
+  'N8N_INTERNAL_BASE_URL',
   'ALLOWED_REPO_ROOTS',
 ] as const;
 

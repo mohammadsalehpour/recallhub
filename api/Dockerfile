@@ -1,10 +1,16 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm config set fetch-retries 5 \
+  && npm config set fetch-retry-mintimeout 20000 \
+  && npm config set fetch-retry-maxtimeout 120000 \
+  && npm config set fetch-timeout 300000 \
+  && npm ci
 
 FROM node:24-alpine AS build
 WORKDIR /app
+ARG DATABASE_URL=postgresql://recallhub:Aa123456@postgres:5432/recallhub_db
+ENV DATABASE_URL=$DATABASE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run prisma:generate
