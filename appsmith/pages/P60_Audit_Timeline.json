@@ -1,0 +1,13 @@
+{
+  "pageName": "P60_Audit_Timeline",
+  "purpose": "Traceable timeline from audit logs and workflow runs.",
+  "onPageLoad": ["qAuditLogs.run", "qAuditWorkflowRuns.run"],
+  "widgets": [
+    { "name": "tblAuditTimeline", "type": "Table", "data": "{{JS_AppShell.auditTimelineRows()}}" },
+    { "name": "tblAuditWorkflowEvents", "type": "Table", "data": "{{qAuditSelectedWorkflowEvents.data}}" },
+    { "name": "btnRefreshAudit", "type": "IconButton", "icon": "refresh-ccw", "onClick": "Promise.all([qAuditLogs.run(), qAuditWorkflowRuns.run()])" }
+  ],
+  "queries": ["qAuditLogs", "qAuditWorkflowRuns", "qAuditSelectedWorkflowEvents"],
+  "jsObjects": ["JS_AppShell"],
+  "rules": ["This page is read-only."]
+}

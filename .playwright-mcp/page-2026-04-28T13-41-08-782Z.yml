@@ -1,0 +1,108 @@
+- generic [ref=e1]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e9]: RecallHub Control Plane
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - button [ref=e12] [cursor=pointer]:
+              - img [ref=e14]
+            - generic [ref=e16]:
+              - button [ref=e18] [cursor=pointer]:
+                - img [ref=e20]
+              - button [ref=e22] [cursor=pointer]:
+                - img [ref=e24]
+          - generic "Your account" [ref=e27] [cursor=pointer]:
+            - generic [ref=e28]: MS
+      - generic [ref=e30]:
+        - generic [ref=e37] [cursor=pointer]: P01_Login
+        - generic [ref=e44] [cursor=pointer]: P10_Project_Setup_Wizard
+        - generic [ref=e51] [cursor=pointer]: P20_Project_Memory
+        - generic [ref=e58] [cursor=pointer]: P30_Work_Items
+        - generic [ref=e65] [cursor=pointer]: P40_Workflow_Runs_Monitor
+        - generic [ref=e72] [cursor=pointer]: P50_Stability_Dashboard
+        - generic [ref=e79] [cursor=pointer]: P60_Audit_Timeline
+    - generic [ref=e80]:
+      - generic [ref=e81]:
+        - link "P01_Login" [ref=e82] [cursor=pointer]:
+          - /url: /app/recallhub-control-plane/p01-login-69f0b51c6d4d1d52a856b06b
+        - link "P10_Project_Setup_Wizard" [ref=e83] [cursor=pointer]:
+          - /url: /app/recallhub-control-plane/p10-project-setup-wizard-69f0b5e66d4d1d52a856b06f
+        - link "P20_Project_Memory" [ref=e84] [cursor=pointer]:
+          - /url: /app/recallhub-control-plane/p20-project-memory-69f0b5e66d4d1d52a856b071
+        - link "P30_Work_Items" [ref=e85] [cursor=pointer]:
+          - /url: /app/recallhub-control-plane/p30-work-items-69f0b5e76d4d1d52a856b073
+        - link "P40_Workflow_Runs_Monitor" [ref=e86] [cursor=pointer]:
+          - /url: /app/recallhub-control-plane/p40-workflow-runs-monitor-69f0b5e76d4d1d52a856b075
+        - link "P50_Stability_Dashboard" [ref=e87] [cursor=pointer]:
+          - /url: /app/recallhub-control-plane/p50-stability-dashboard-69f0b5e76d4d1d52a856b077
+        - link "P60_Audit_Timeline" [ref=e88] [cursor=pointer]:
+          - /url: /app/recallhub-control-plane/p60-audit-timeline-69f0b5e76d4d1d52a856b079
+      - generic [ref=e90]:
+        - button "Share app" [ref=e91] [cursor=pointer]:
+          - img [ref=e93]
+          - generic [ref=e95]: Share app
+        - button "All apps" [ref=e96] [cursor=pointer]:
+          - img [ref=e98]
+          - generic [ref=e100]: All apps
+        - link "Built on" [ref=e101] [cursor=pointer]:
+          - /url: https://appsmith.com
+          - link "Built on" [ref=e102]:
+            - /url: https://appsmith.com
+            - heading "Built on" [level=4] [ref=e103]
+            - img [ref=e104]
+  - generic [ref=e116]:
+    - generic [ref=e262]:
+      - generic [ref=e269]: P10_Project_Setup_Wizard
+      - generic [ref=e276]: Create a project profile, bind a repository, define scan paths/config files, validate and sync.
+      - generic [ref=e283]: "Purpose: Create a project profile, bind a repository, define scan paths/config files, validate and sync."
+      - generic [ref=e290]: "On load: JS_AppShell.startupFromUrl, qProjectList.run"
+      - generic [ref=e297]: "Queries: qProjectList, qProjectGet, qProjectCreate, qProjectTechStack, qRepositoryList, qRepoCreate, qRepoValidate, qPathList, qPathCreate, qConfigList, qConfigCreate, qProjectSync"
+      - generic [ref=e304]: "JS Objects: JS_AppShell, JS_ProjectFlow, JS_RunMonitor"
+      - generic [ref=e311]: "Section: Project"
+      - generic [ref=e318]: "- tblProjects | Table | data={{JS_AppShell.projectRows()}}"
+      - generic [ref=e325]: "- inpProjectCode | Input"
+      - generic [ref=e332]: "- inpProjectName | Input"
+      - generic [ref=e339]: "- inpProjectDescription | Input"
+      - generic [ref=e346]: "- selBusinessDomain | Select"
+      - generic [ref=e353]: "- inpFrameworkName | Input"
+      - generic [ref=e360]: "- inpFrameworkVersion | Input"
+      - generic [ref=e367]: "- tblTechStack | Table"
+      - generic [ref=e374]: "- btnCreateProject | Button | onClick=JS_ProjectFlow.createProjectWizardFlow()"
+      - generic [ref=e381]: "Section: Repository"
+      - generic [ref=e388]: "- tblRepositories | Table | data={{qRepositoryList.data}}"
+      - generic [ref=e395]: "- inpRepoName | Input"
+      - generic [ref=e402]: "- selRepoLocatorType | Select"
+      - generic [ref=e409]: "- inpRepoRoot | Input"
+      - generic [ref=e416]: "- inpDefaultBranch | Input"
+      - generic [ref=e423]: "- btnCreateRepository | Button | onClick=JS_ProjectFlow.createRepository()"
+      - generic [ref=e430]: "- btnValidateRepository | Button | onClick=JS_ProjectFlow.validateRepository()"
+      - generic [ref=e437]: "Section: Paths"
+      - generic [ref=e444]: "- tblPaths | Table | data={{qPathList.data}}"
+      - generic [ref=e451]: "- inpPath | Input"
+      - generic [ref=e458]: "- inpPathLabel | Input"
+      - generic [ref=e465]: "- chkPathRequired | Checkbox"
+      - generic [ref=e472]: "- selPathType | Select"
+      - generic [ref=e479]: "- selScanPolicy | Select"
+      - generic [ref=e486]: "- selOwnership | Select"
+      - generic [ref=e493]: "- btnCreatePath | Button | onClick=JS_ProjectFlow.createPath()"
+      - generic [ref=e500]: "Section: Config Files"
+      - generic [ref=e507]: "- tblConfigFiles | Table | data={{qConfigList.data}}"
+      - generic [ref=e514]: "- inpConfigRelativePath | Input"
+      - generic [ref=e521]: "- inpConfigType | Input"
+      - generic [ref=e528]: "- chkConfigRequired | Checkbox"
+      - generic [ref=e535]: "- selContainsSecrets | Select"
+      - generic [ref=e542]: "- selConfigScanPolicy | Select"
+      - generic [ref=e549]: "- btnCreateConfigFile | Button | onClick=JS_ProjectFlow.createConfigFile()"
+      - generic [ref=e556]: "Section: Sync"
+      - generic [ref=e563]: "- btnValidateAndSync | Button | onClick=JS_ProjectFlow.validateRepositoryAndSync()"
+    - link "Built on" [ref=e243] [cursor=pointer]:
+      - /url: https://appsmith.com
+      - generic [ref=e244]:
+        - heading "Built on" [level=4] [ref=e245]
+        - img [ref=e246]
+  - generic [ref=e565]:
+    - img [ref=e567]
+    - generic [ref=e570]: P10_Project_Setup_Wizard
+  - iframe [ref=e257]:
+    

@@ -3,11 +3,11 @@ import { IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
 export class StartWorkflowDto {
   @IsOptional()
   @IsUUID()
-  triggered_by?: string;
+  triggeredBy?: string;
 
   @IsOptional()
   @IsString()
-  idempotency_key?: string;
+  idempotencyKey?: string;
 
   @IsOptional()
   @IsObject()

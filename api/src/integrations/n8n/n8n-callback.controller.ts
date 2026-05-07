@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
 import { N8nCallbackDto } from './dto/n8n-callback.dto';
 import { N8nCallbackService } from './n8n-callback.service';
 import { N8nSignatureGuard } from './n8n-signature.guard';
@@ -14,13 +14,21 @@ export class N8nCallbackController {
 
   @Post('callback')
   @UseGuards(N8nSignatureGuard)
-  callback(@Body() dto: N8nCallbackDto) {
-    return this.callbackService.handleCallback(dto);
+  callback(
+    @Body() dto: N8nCallbackDto,
+    @Headers('x-recallhub-timestamp') timestamp: string,
+    @Headers('x-recallhub-signature') signature: string,
+  ) {
+    return this.callbackService.handleCallback(dto, { timestamp, signature });
   }
 
   @Post('execution-update')
   @UseGuards(N8nSignatureGuard)
-  executionUpdate(@Body() dto: N8nCallbackDto) {
-    return this.callbackService.handleCallback(dto);
+  executionUpdate(
+    @Body() dto: N8nCallbackDto,
+    @Headers('x-recallhub-timestamp') timestamp: string,
+    @Headers('x-recallhub-signature') signature: string,
+  ) {
+    return this.callbackService.handleCallback(dto, { timestamp, signature });
   }
 }

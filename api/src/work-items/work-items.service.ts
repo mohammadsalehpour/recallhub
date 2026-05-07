@@ -5,8 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
+import { N8nClientService } from '../integrations/n8n/n8n-client.service';
 import {
+  ProjectStatus,
   WorkItemStatus,
+  WorkflowExecutor,
   WorkflowRunStatus,
 } from '../generated/prisma/enums';
 import { AuditService } from '../audit/audit.service';
@@ -32,6 +35,7 @@ export class WorkItemsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly n8nClient: N8nClientService,
   ) {}
 
   async create(projectCode: string, dto: CreateWorkItemDto) {
@@ -116,6 +120,42 @@ export class WorkItemsService {
     };
   }
 
+  async getStatus(workItemId: string) {
+    const workItem = await this.requireWorkItem(workItemId);
+    return {
+      success: true,
+      data: {
+        id: workItem.id,
+        projectId: workItem.projectId,
+        status: workItem.status,
+        riskLevel: workItem.riskLevel,
+        updatedAt: workItem.updatedAt,
+      },
+    };
+  }
+
+  async listArtifacts(workItemId: string) {
+    const workItem = await this.requireWorkItem(workItemId);
+    const artifacts = await this.prisma.artifact.findMany({
+      where: { workItemId: workItem.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return { success: true, data: artifacts };
+  }
+
+  async analyze(workItemId: string, dto: StartWorkflowDto) {
+    const workItem = await this.requireWorkItem(workItemId);
+    this.assertStatus(workItem.status, [
+      WorkItemStatus.needs_project_context,
+      WorkItemStatus.needs_research,
+      WorkItemStatus.research_ready,
+    ]);
+
+    const run = await this.startWorkflowRun(workItem, 'task.analyze', dto);
+    return { success: true, data: { workflowRun: run } };
+  }
+
   async startResearch(workItemId: string, dto: StartWorkflowDto) {
     const workItem = await this.requireWorkItem(workItemId);
     this.assertStatus(workItem.status, [
@@ -152,19 +192,113 @@ export class WorkItemsService {
     return { success: true, data: { workflowRun: run } };
   }
 
+  async reviewDocument(workItemId: string, dto: StartWorkflowDto) {
+    const workItem = await this.requireWorkItem(workItemId);
+    this.assertStatus(workItem.status, [
+      WorkItemStatus.spec_review,
+      WorkItemStatus.needs_human_approval,
+    ]);
+
+    const run = await this.startWorkflowRun(workItem, 'document.review', dto);
+    return { success: true, data: { workflowRun: run } };
+  }
+
+  async finalizeDocument(workItemId: string, dto: StartWorkflowDto) {
+    const workItem = await this.requireWorkItem(workItemId);
+    this.assertStatus(workItem.status, [
+      WorkItemStatus.spec_review,
+      WorkItemStatus.needs_human_approval,
+    ]);
+
+    const run = await this.startWorkflowRun(workItem, 'document.finalize', dto);
+    return { success: true, data: { workflowRun: run } };
+  }
+
   async submitHumanApproval(workItemId: string, dto: HumanApprovalDto) {
     const workItem = await this.requireWorkItem(workItemId);
     this.assertStatus(workItem.status, [WorkItemStatus.needs_human_approval]);
+    const isApproved = dto.decision !== 'reject';
+    const isWaiver = dto.decision === 'approve_with_waiver';
+    const workItemQuestions = this.openQuestions(workItem.openQuestionsJson);
 
-    const nextStatus =
-      dto.decision === 'approve'
-        ? WorkItemStatus.approved_for_implementation
-        : WorkItemStatus.rejected;
+    if (isApproved && workItemQuestions.length > 0 && !isWaiver) {
+      throw new BadRequestException({
+        code: 'OPEN_QUESTIONS_REQUIRE_WAIVER',
+        message:
+          'Open questions must be resolved before approval, or approved with waiver.',
+        openQuestions: workItemQuestions,
+      });
+    }
 
-    const updated = await this.transitionStatus(workItem, nextStatus, {
+    const finalDocument = isApproved
+      ? await this.requireFinalDocumentArtifact(workItem.id, dto.artifact_id)
+      : null;
+    const openQuestions = this.blockingQuestions(
+      workItem.openQuestionsJson,
+      finalDocument?.contentJson,
+    );
+
+    if (isWaiver && !dto.reason?.trim()) {
+      throw new BadRequestException(
+        'Waiver approval requires an explicit review reason',
+      );
+    }
+
+    if (isApproved && openQuestions.length > 0 && !isWaiver) {
+      throw new BadRequestException({
+        code: 'OPEN_QUESTIONS_REQUIRE_WAIVER',
+        message:
+          'Open questions must be resolved before approval, or approved with waiver.',
+        openQuestions,
+      });
+    }
+
+    const artifactId = isApproved ? finalDocument!.id : dto.artifact_id;
+
+    const nextStatus = isApproved
+      ? WorkItemStatus.approved_for_implementation
+      : WorkItemStatus.rejected;
+    const approvalDecision = isWaiver
+      ? 'approved_with_waiver'
+      : isApproved
+        ? 'approved_for_implementation'
+        : 'rejected';
+
+    await this.prisma.humanApproval.create({
+      data: {
+        projectId: workItem.projectId,
+        workItemId: workItem.id,
+        artifactId,
+        decision: approvalDecision,
+        reviewedBy: dto.actor_id,
+        reviewNote: dto.reason,
+      },
+    });
+
+    let updated = await this.transitionStatus(workItem, nextStatus, {
       reason: dto.reason,
       actorId: dto.actor_id,
+      artifactId,
+      decision: approvalDecision,
+      openQuestionsWaived: isWaiver ? openQuestions : undefined,
     });
+
+    if (isWaiver) {
+      updated = await this.prisma.workItem.update({
+        where: { id: updated.id },
+        data: {
+          riskLevel: this.bumpRiskLevel(updated.riskLevel),
+          metadataJson: {
+            ...(this.objectRecord(updated.metadataJson) ?? {}),
+            waiver: {
+              reason: dto.reason,
+              openQuestions,
+              approvedAt: new Date().toISOString(),
+            },
+          },
+        },
+      });
+    }
 
     await this.audit.record({
       projectId: updated.projectId,
@@ -172,10 +306,52 @@ export class WorkItemsService {
       action: 'work_item.human_approval',
       resourceType: 'work_item',
       resourceId: updated.id,
-      metadataJson: { decision: dto.decision, reason: dto.reason },
+      metadataJson: { decision: approvalDecision, reason: dto.reason },
     });
 
     return { success: true, data: updated };
+  }
+
+  async createImplementationPlan(workItemId: string, dto: StartWorkflowDto) {
+    const workItem = await this.requireWorkItem(workItemId);
+    this.assertStatus(workItem.status, [
+      WorkItemStatus.approved_for_implementation,
+      WorkItemStatus.implementation_planning,
+    ]);
+    await this.assertImplementationPrerequisites(workItem);
+
+    const run = await this.startWorkflowRun(
+      workItem,
+      'implementation.plan',
+      dto,
+    );
+
+    return { success: true, data: { workflowRun: run } };
+  }
+
+  async simulateExecution(workItemId: string, dto: StartWorkflowDto) {
+    const workItem = await this.requireWorkItem(workItemId);
+    this.assertStatus(workItem.status, [
+      WorkItemStatus.implementation_planning,
+    ]);
+    await this.assertImplementationPrerequisites(workItem);
+
+    const run = await this.startWorkflowRun(
+      workItem,
+      'execution.simulate',
+      dto,
+    );
+    await this.transitionStatus(
+      workItem,
+      WorkItemStatus.implementation_in_progress,
+      {
+        workflowCode: 'execution.simulate',
+        runId: run.id,
+        mode: 'simulation',
+      },
+    );
+
+    return { success: true, data: { workflowRun: run } };
   }
 
   async completeWithMemoryCommit(
@@ -183,7 +359,9 @@ export class WorkItemsService {
     dto: CreateMemoryCommitDto,
   ) {
     const workItem = await this.requireWorkItem(workItemId);
-    this.assertStatus(workItem.status, [WorkItemStatus.done_pending_memory_commit]);
+    this.assertStatus(workItem.status, [
+      WorkItemStatus.done_pending_memory_commit,
+    ]);
 
     const commit = await this.prisma.memoryCommit.create({
       data: {
@@ -193,7 +371,9 @@ export class WorkItemsService {
         whatChanged: dto.what_changed,
         whyChanged: dto.why_changed,
         howChanged: dto.how_changed,
-        filesTouchedJson: dto.files_touched as Prisma.InputJsonValue | undefined,
+        filesTouchedJson: dto.files_touched as
+          | Prisma.InputJsonValue
+          | undefined,
         modulesTouchedJson: dto.modules_touched as
           | Prisma.InputJsonValue
           | undefined,
@@ -208,10 +388,14 @@ export class WorkItemsService {
       },
     });
 
-    const updated = await this.transitionStatus(workItem, WorkItemStatus.completed, {
-      memoryCommitId: commit.id,
-      actorId: dto.created_by,
-    });
+    const updated = await this.transitionStatus(
+      workItem,
+      WorkItemStatus.completed,
+      {
+        memoryCommitId: commit.id,
+        actorId: dto.created_by,
+      },
+    );
 
     await this.audit.record({
       projectId: updated.projectId,
@@ -271,12 +455,12 @@ export class WorkItemsService {
       throw new NotFoundException('Workflow definition not found or inactive');
     }
 
-    if (dto.idempotency_key) {
+    if (dto.idempotencyKey) {
       const existing = await this.prisma.workflowRun.findUnique({
         where: {
           workflowDefinitionId_idempotencyKey: {
             workflowDefinitionId: definition.id,
-            idempotencyKey: dto.idempotency_key,
+            idempotencyKey: dto.idempotencyKey,
           },
         },
       });
@@ -289,6 +473,30 @@ export class WorkItemsService {
       }
     }
 
+    const inFlight = await this.prisma.workflowRun.findFirst({
+      where: {
+        workflowDefinitionId: definition.id,
+        workItemId: workItem.id,
+        status: {
+          in: [
+            WorkflowRunStatus.pending,
+            WorkflowRunStatus.queued,
+            WorkflowRunStatus.running,
+            WorkflowRunStatus.retrying,
+          ],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (inFlight) {
+      throw new ConflictException({
+        code: 'WORK_ITEM_WORKFLOW_ALREADY_RUNNING',
+        workflowRunId: inFlight.id,
+        workflowCode,
+      });
+    }
+
     const contextPacket = await this.getContextPacket(workItem.id);
 
     const run = await this.prisma.workflowRun.create({
@@ -297,24 +505,28 @@ export class WorkItemsService {
         projectId: workItem.projectId,
         workItemId: workItem.id,
         status: WorkflowRunStatus.pending,
-        idempotencyKey: dto.idempotency_key,
-        triggeredBy: dto.triggered_by,
+        idempotencyKey: dto.idempotencyKey,
+        triggeredBy: dto.triggeredBy,
         inputJson: {
-          context_packet: contextPacket.data,
+          contextPacket: contextPacket.data,
           ...(dto.input ?? {}),
         } as Prisma.InputJsonValue,
         events: {
           create: {
             eventType: 'workflow_run.created',
-            payloadJson: { workflowCode: workflowCode, workItemId: workItem.id },
+            payloadJson: {
+              workflowCode: workflowCode,
+              workItemId: workItem.id,
+            },
           },
         },
       },
+      include: { workflowDefinition: true },
     });
 
     await this.audit.record({
       projectId: workItem.projectId,
-      actorId: dto.triggered_by,
+      actorId: dto.triggeredBy,
       action: 'work_item.workflow.start',
       resourceType: 'workflow_run',
       resourceId: run.id,
@@ -324,7 +536,91 @@ export class WorkItemsService {
       },
     });
 
+    if (definition.executor === WorkflowExecutor.n8n) {
+      return this.triggerN8nRun(run.id);
+    }
+
     return run;
+  }
+
+  private async triggerN8nRun(runId: string) {
+    const run = await this.prisma.workflowRun.findUnique({
+      where: { id: runId },
+      include: { workflowDefinition: true },
+    });
+
+    if (!run) {
+      throw new NotFoundException('Workflow run not found');
+    }
+
+    const running = await this.prisma.workflowRun.update({
+      where: { id: run.id },
+      data: {
+        status: WorkflowRunStatus.running,
+        startedAt: run.startedAt ?? new Date(),
+        events: {
+          create: {
+            eventType: 'n8n.trigger.started',
+            payloadJson: {
+              workflowCode: run.workflowDefinition.code,
+              n8nPath: run.workflowDefinition.n8nPath,
+            },
+          },
+        },
+      },
+      include: { workflowDefinition: true },
+    });
+
+    try {
+      const triggerResult = await this.n8nClient.triggerWorkflow(
+        running.workflowDefinition,
+        running,
+      );
+      await this.prisma.workflowEvent.create({
+        data: {
+          workflowRunId: running.id,
+          eventType: 'n8n.trigger.accepted',
+          payloadJson: triggerResult,
+        },
+      });
+    } catch (error) {
+      const serialized = this.serializeError(error);
+      await this.prisma.workflowRun.update({
+        where: { id: running.id },
+        data: {
+          status: WorkflowRunStatus.failed,
+          errorJson: serialized,
+          finishedAt: new Date(),
+          events: {
+            create: {
+              eventType: 'n8n.trigger.failed',
+              payloadJson: serialized,
+            },
+          },
+        },
+      });
+
+      await this.audit.record({
+        projectId: running.projectId ?? undefined,
+        action: 'work_item.workflow.trigger_n8n',
+        resourceType: 'workflow_run',
+        resourceId: running.id,
+        outcome: 'failure',
+        reason: serialized.message,
+        metadataJson: {
+          workflowCode: running.workflowDefinition.code,
+          workItemId: running.workItemId,
+        },
+      });
+
+      throw new BadRequestException({
+        code: 'N8N_TRIGGER_FAILED',
+        workflowRunId: running.id,
+        message: serialized.message,
+      });
+    }
+
+    return running;
   }
 
   private async transitionStatus(
@@ -409,5 +705,126 @@ export class WorkItemsService {
         afterJson: args.afterJson as Prisma.InputJsonValue | undefined,
       },
     });
+  }
+
+  private async requireFinalDocumentArtifact(
+    workItemId: string,
+    artifactId?: string,
+  ) {
+    const artifact = artifactId
+      ? await this.prisma.artifact.findFirst({
+          where: {
+            id: artifactId,
+            workItemId,
+            artifactType: 'final_document',
+            status: { not: 'rejected' },
+          },
+        })
+      : await this.prisma.artifact.findFirst({
+          where: {
+            workItemId,
+            artifactType: 'final_document',
+            status: { not: 'rejected' },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+    if (!artifact) {
+      throw new BadRequestException(
+        'Human approval for implementation requires a final_document artifact',
+      );
+    }
+
+    return artifact;
+  }
+
+  private async assertImplementationPrerequisites(
+    workItem: Awaited<ReturnType<WorkItemsService['requireWorkItem']>>,
+  ) {
+    if (
+      !(
+        [ProjectStatus.active, ProjectStatus.indexed] as ProjectStatus[]
+      ).includes(workItem.project.status)
+    ) {
+      throw new BadRequestException(
+        'Project must be indexed or active before implementation planning',
+      );
+    }
+
+    const finalDocument = await this.requireFinalDocumentArtifact(workItem.id);
+
+    const approval = await this.prisma.humanApproval.findFirst({
+      where: {
+        workItemId: workItem.id,
+        decision: {
+          in: ['approved_for_implementation', 'approved_with_waiver'],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!approval) {
+      throw new BadRequestException(
+        'Implementation planning requires human approval',
+      );
+    }
+
+    const openQuestions = this.blockingQuestions(
+      workItem.openQuestionsJson,
+      finalDocument.contentJson,
+    );
+    if (
+      openQuestions.length > 0 &&
+      approval.decision !== 'approved_with_waiver'
+    ) {
+      throw new BadRequestException({
+        code: 'OPEN_QUESTIONS_NOT_WAIVED',
+        message:
+          'Open questions must be resolved or explicitly waived before implementation.',
+        openQuestions,
+      });
+    }
+  }
+
+  private openQuestions(value: unknown): string[] {
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string')
+      : [];
+  }
+
+  private blockingQuestions(
+    workItemQuestions: unknown,
+    artifactContent: unknown,
+  ): string[] {
+    const content = this.objectRecord(artifactContent) ?? {};
+    return [
+      ...this.openQuestions(workItemQuestions),
+      ...this.openQuestions(content.openQuestions),
+      ...this.openQuestions(content.open_questions),
+      ...this.openQuestions(content.unknowns),
+      ...this.openQuestions(content.remainingQuestions),
+    ].filter(
+      (question, index, questions) => questions.indexOf(question) === index,
+    );
+  }
+
+  private objectRecord(value: unknown): Record<string, unknown> | undefined {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined;
+  }
+
+  private bumpRiskLevel(riskLevel: string): string {
+    const levels = ['low', 'medium', 'high', 'critical'];
+    const index = levels.indexOf(riskLevel);
+    return levels[Math.min(index < 0 ? 2 : index + 1, levels.length - 1)];
+  }
+
+  private serializeError(error: unknown): { message: string; name?: string } {
+    if (error instanceof Error) {
+      return { message: error.message, name: error.name };
+    }
+
+    return { message: 'Unknown n8n trigger error' };
   }
 }

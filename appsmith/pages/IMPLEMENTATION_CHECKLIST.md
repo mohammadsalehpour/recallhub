@@ -3,50 +3,58 @@
 این چک‌لیست برای پیاده‌سازی عملی سند `appsmith/README.md` است.
 
 ## P01_Login
-- [ ] `inpToken`
-- [ ] `btnSaveToken`
-- [ ] save token into store
+- [x] `inpToken`
+- [x] `btnSaveToken`
+- [x] save token into store
 
 ## P10_Project_Setup_Wizard
-- [ ] فرم Create Project
-- [ ] Grid/Editable table برای tech_stack
-- [ ] فرم Repository
-- [ ] فرم Paths
-- [ ] فرم Config Files
-- [ ] دکمه Validate Repo
-- [ ] دکمه Sync Project
+- [x] فرم Create Project
+- [x] Grid/Editable table برای tech_stack
+- [x] فرم Repository
+- [x] فرم Paths
+- [x] فرم Config Files
+- [x] دکمه Validate Repo
+- [x] دکمه Sync Project
 
 ## P20_Project_Memory
-- [ ] تب Modules + table
-- [ ] تب Files + table
-- [ ] تب Chunks + table
-- [ ] تب Events + table
-- [ ] تب Commits + table
+- [x] تب Modules + table
+- [x] تب Files + table
+- [x] تب Chunks + table
+- [x] تب Events + table
+- [x] تب Commits + table
 
 ## P30_Work_Items
-- [ ] فرم Create WorkItem
-- [ ] Table لیست WorkItem
-- [ ] پنل Context Packet
-- [ ] دکمه Start Research
-- [ ] دکمه Start Spec
-- [ ] دکمه Human Approval
-- [ ] فرم Memory Commit
+- [x] فرم Create WorkItem
+- [x] Table لیست WorkItem
+- [x] پنل Context Packet
+- [x] دکمه Start Research
+- [x] دکمه Start Spec
+- [x] دکمه Human Approval
+- [x] فرم Memory Commit
 
 ## P40_Workflow_Runs_Monitor
-- [ ] جدول Workflow Runs
-- [ ] جزئیات run انتخابی
-- [ ] جدول Events
-- [ ] Auto-refresh/poll
+- [x] جدول Workflow Runs
+- [x] جزئیات run انتخابی
+- [x] جدول Events
+- [x] Auto-refresh/poll
+- [x] دکمه Retry
+- [x] دکمه Cancel
 
 ## P50_Stability_Dashboard
-- [ ] KPI: project count
-- [ ] KPI: stale runs
-- [ ] Breakdown: workflow run statuses
-- [ ] دکمه Reconcile + confirm modal
+- [x] KPI: project count
+- [x] KPI: stale runs
+- [x] Breakdown: workflow run statuses
+- [x] دکمه Reconcile + confirm modal
+
+## P60_Audit_Timeline
+- [x] Timeline read-only از memory events
+- [x] Workflow runs در timeline
+- [x] Workflow events برای run انتخابی
+- [x] Refresh action
 
 ## Security/Architecture Checks
-- [ ] هیچ query مستقیم به n8n ندارد
-- [ ] هیچ DB datasource برای domain tables تعریف نشده
-- [ ] هیچ secret hard-coded در JS Objectها نیست
-- [ ] actionهای admin role-gated هستند
-- [ ] status transitions فقط از backend می‌آید
+- [x] هیچ query مستقیم به n8n ندارد
+- [x] هیچ DB datasource برای domain tables تعریف نشده
+- [x] هیچ secret hard-coded در JS Objectها نیست
+- [x] actionهای admin role-gated هستند
+- [x] status transitions فقط از backend می‌آید

@@ -14,7 +14,9 @@
       "request_type": "{{selRequestType.selectedOptionValue}}",
       "risk_level": "{{selRiskLevel.selectedOptionValue}}",
       "priority": "{{selPriority.selectedOptionValue}}",
-      "open_questions": "{{tblOpenQuestions.tableData.map(o => o.question)}}"
+      "open_questions": "{{JS_WorkItemFlow.openQuestions()}}",
+      "requested_by": "{{appsmith.store.activeUserId || undefined}}",
+      "metadata": "{{JS_WorkItemFlow.createMetadata()}}"
     }
   },
   {
@@ -27,7 +29,9 @@
     "method": "POST",
     "path": "/work-items/{{appsmith.store.activeWorkItemId}}/research/start",
     "bodyTemplate": {
-      "idempotency_key": "{{appsmith.store.workItemActionKey}}"
+      "idempotencyKey": "{{appsmith.store.workItemActionKey}}",
+      "triggeredBy": "{{appsmith.store.activeUserId || undefined}}",
+      "input": "{{JS_WorkItemFlow.workflowInput()}}"
     }
   },
   {
@@ -35,7 +39,9 @@
     "method": "POST",
     "path": "/work-items/{{appsmith.store.activeWorkItemId}}/spec/start",
     "bodyTemplate": {
-      "idempotency_key": "{{appsmith.store.workItemActionKey}}"
+      "idempotencyKey": "{{appsmith.store.workItemActionKey}}",
+      "triggeredBy": "{{appsmith.store.activeUserId || undefined}}",
+      "input": "{{JS_WorkItemFlow.workflowInput()}}"
     }
   },
   {
@@ -44,7 +50,28 @@
     "path": "/work-items/{{appsmith.store.activeWorkItemId}}/human-approval",
     "bodyTemplate": {
       "decision": "{{selApprovalDecision.selectedOptionValue}}",
-      "reason": "{{inpApprovalReason.text}}"
+      "reason": "{{inpApprovalReason.text}}",
+      "actor_id": "{{appsmith.store.activeUserId || undefined}}"
+    }
+  },
+  {
+    "name": "qWorkItemImplementationPlan",
+    "method": "POST",
+    "path": "/work-items/{{appsmith.store.activeWorkItemId}}/create-implementation-plan",
+    "bodyTemplate": {
+      "idempotencyKey": "{{appsmith.store.workItemActionKey}}",
+      "triggeredBy": "{{appsmith.store.activeUserId || undefined}}",
+      "input": "{{JS_WorkItemFlow.workflowInput()}}"
+    }
+  },
+  {
+    "name": "qWorkItemExecutionSimulate",
+    "method": "POST",
+    "path": "/work-items/{{appsmith.store.activeWorkItemId}}/simulate-execution",
+    "bodyTemplate": {
+      "idempotencyKey": "{{appsmith.store.workItemActionKey}}",
+      "triggeredBy": "{{appsmith.store.activeUserId || undefined}}",
+      "input": "{{JS_WorkItemFlow.workflowInput()}}"
     }
   },
   {
@@ -56,8 +83,12 @@
       "what_changed": "{{inpWhatChanged.text}}",
       "why_changed": "{{inpWhyChanged.text}}",
       "how_changed": "{{inpHowChanged.text}}",
-      "files_touched": "{{tblFilesTouched.tableData.map(x => x.path)}}",
-      "commands_run": "{{tblCommandsRun.tableData.map(x => x.command)}}"
+      "files_touched": "{{JS_WorkItemFlow.filesTouched()}}",
+      "modules_touched": "{{JS_WorkItemFlow.modulesTouched()}}",
+      "commands_run": "{{JS_WorkItemFlow.commandsRun()}}",
+      "validation_result": "{{JS_WorkItemFlow.validationResult()}}",
+      "risks_remaining": "{{JS_WorkItemFlow.risksRemaining()}}",
+      "created_by": "{{appsmith.store.activeUserId || undefined}}"
     }
   }
 ]

@@ -1,0 +1,46 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e141]:
+    - generic [ref=e143]:
+      - generic [ref=e145]: RecallHub Control Plane
+      - generic [ref=e146]:
+        - generic [ref=e147]:
+          - button [ref=e148] [cursor=pointer]:
+            - img [ref=e150]
+          - generic [ref=e152]:
+            - button [ref=e154] [cursor=pointer]:
+              - img [ref=e156]
+            - button [ref=e158] [cursor=pointer]:
+              - img [ref=e160]
+        - generic "Your account" [ref=e163] [cursor=pointer]:
+          - generic [ref=e164]: MS
+    - generic [ref=e165]:
+      - link "Page1" [ref=e167] [cursor=pointer]:
+        - /url: /app/recallhub-control-plane/page1-69f0b4f16d4d1d52a856b069
+      - generic [ref=e169]:
+        - button "Share app" [ref=e170] [cursor=pointer]:
+          - img [ref=e172]
+          - generic [ref=e174]: Share app
+        - button "All apps" [ref=e175] [cursor=pointer]:
+          - img [ref=e177]
+          - generic [ref=e179]: All apps
+        - link "Built on" [ref=e180] [cursor=pointer]:
+          - /url: https://appsmith.com
+          - link "Built on" [ref=e181]:
+            - /url: https://appsmith.com
+            - heading "Built on" [level=4] [ref=e182]
+            - img [ref=e183]
+  - generic [ref=e194]:
+    - generic [ref=e197]:
+      - img [ref=e200]
+      - heading "This page seems to be blank" [level=4] [ref=e202]
+      - paragraph [ref=e203]:
+        - text: Please add widgets to this page in the
+        - link "Appsmith Editor" [ref=e204] [cursor=pointer]:
+          - /url: /app/recallhub-control-plane/page1-69f0b4f16d4d1d52a856b069/edit
+    - link "Built on" [ref=e206] [cursor=pointer]:
+      - /url: https://appsmith.com
+      - generic [ref=e207]:
+        - heading "Built on" [level=4] [ref=e208]
+        - img [ref=e209]
+  - iframe [ref=e122]:
+    

@@ -2,8 +2,8 @@ import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class HumanApprovalDto {
   @IsString()
-  @IsIn(['approve', 'reject'])
-  decision!: 'approve' | 'reject';
+  @IsIn(['approve', 'approve_with_waiver', 'reject'])
+  decision!: 'approve' | 'approve_with_waiver' | 'reject';
 
   @IsOptional()
   @IsString()
@@ -13,4 +13,8 @@ export class HumanApprovalDto {
   @IsOptional()
   @IsUUID()
   actor_id?: string;
+
+  @IsOptional()
+  @IsUUID()
+  artifact_id?: string;
 }

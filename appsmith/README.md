@@ -417,14 +417,106 @@ Appsmith آماده‌ی بهره‌برداری است اگر:
 برای اینکه این سند مستقیم قابل اجرا باشد، این artifactها داخل ریپو اضافه شده‌اند:
 
 - `appsmith/config/datasource.template.json`
+- `appsmith/RecallHub_Control_Plane.json`
+- `appsmith/scripts/generate_appsmith_export.mjs`
+- `appsmith/application.manifest.json`
 - `appsmith/queries/projects.json`
 - `appsmith/queries/memory.json`
 - `appsmith/queries/work_items.json`
 - `appsmith/queries/workflows.json`
 - `appsmith/queries/stability.json`
+- `appsmith/queries/audit.json`
+- `appsmith/queries/auth.json`
+- `appsmith/jsobjects/JS_AppShell.js`
 - `appsmith/jsobjects/JS_ProjectFlow.js`
 - `appsmith/jsobjects/JS_WorkItemFlow.js`
 - `appsmith/jsobjects/JS_RunMonitor.js`
+- `appsmith/pages/P01_Login.json`
+- `appsmith/pages/P10_Project_Setup_Wizard.json`
+- `appsmith/pages/P20_Project_Memory.json`
+- `appsmith/pages/P30_Work_Items.json`
+- `appsmith/pages/P40_Workflow_Runs_Monitor.json`
+- `appsmith/pages/P50_Stability_Dashboard.json`
+- `appsmith/pages/P60_Audit_Timeline.json`
 - `appsmith/pages/IMPLEMENTATION_CHECKLIST.md`
+- `appsmith/scripts/validate_appsmith_contract.sh`
 
-این فایل‌ها template هستند و باید با نام widget/query واقعی اپ شما align شوند.
+فایل‌های `pages/`, `queries/`, و `jsobjects/` قرارداد توسعه هستند؛ فایل `RecallHub_Control_Plane.json` خروجی import واقعی Appsmith است.
+
+---
+
+## 14) وضعیت پیاده‌سازی فعلی
+
+این پوشه اکنون یک implementation pack کامل برای ساخت Appsmith دارد:
+
+1. `RecallHub_Control_Plane.json` فایل import واقعی Appsmith است و با schema exportهای آماده ساخته شده است.
+2. `scripts/generate_appsmith_export.mjs` از قراردادهای همین پوشه، صفحه‌ها، queryها، JS Objectهای صفحه‌ای و datasource را بازتولید می‌کند.
+3. `application.manifest.json` قرارداد app، store، URL state و صفحه‌ها را مشخص می‌کند.
+4. فایل‌های `pages/P*.json` تعریف منطقی widgetها، bindingها، queryها و actionها هستند.
+5. Queryها با endpointهای فعلی NestJS در `api/src/**.controller.ts` هم‌راستا شده‌اند.
+6. JS Objectها فقط orchestration سبک UI انجام می‌دهند و بعد از هر action از backend دوباره fetch می‌کنند.
+7. `scripts/validate_appsmith_contract.sh` JSONها و کنترل‌های معماری را بررسی می‌کند.
+
+### ترتیب ساخت در Appsmith
+
+1. در Appsmith از Import application استفاده کنید و فایل `appsmith/RecallHub_Control_Plane.json` را بدهید.
+2. بعد از import، datasource با نام `RecallHubAPI` را روی محیط درست تنظیم کنید.
+3. اگر Appsmith بیرون از Compose اجرا می‌شود، Base URL را `http://host.docker.internal:3000/api/v1` بگذارید.
+4. اگر API و Appsmith داخل همین Compose هستند، Base URL همان `http://api:3000/api/v1` بماند.
+5. قبل از UAT این دستور را اجرا کنید:
+
+```bash
+./appsmith/scripts/validate_appsmith_contract.sh
+```
+
+---
+
+## 15) نصب و اجرای خود Appsmith
+
+خود Appsmith در این پروژه با Docker Compose اجرا می‌شود و سرویس آن در `infra/docker-compose.yml` تعریف شده است:
+
+```yaml
+appsmith:
+  image: appsmith/appsmith-ce:latest
+  ports:
+    - "8080:80"
+  volumes:
+    - appsmith_stacks:/appsmith-stacks
+```
+
+اجرای Appsmith:
+
+```bash
+docker compose -f infra/docker-compose.yml up -d appsmith
+```
+
+آدرس پنل:
+
+```text
+http://localhost:8080
+```
+
+اگر API را به‌صورت local طبق README ریشه اجرا می‌کنید، داخل Appsmith برای Datasource از این Base URL استفاده کنید:
+
+```text
+http://host.docker.internal:3000/api/v1
+```
+
+اگر API هم داخل همان Docker Compose به‌عنوان service `api` اجرا شود، Base URL این است:
+
+```text
+http://api:3000/api/v1
+```
+
+برای اجرای API local:
+
+```bash
+cd api
+DATABASE_URL='postgresql://recallhub:Aa123456@localhost:15432/recallhub_db' \
+REDIS_URL='redis://localhost:6379' \
+N8N_INTERNAL_BASE_URL='http://localhost:5678' \
+N8N_CALLBACK_SECRET='change_me_callback_secret' \
+APP_JWT_SECRET='change_me_jwt_secret' \
+ALLOWED_REPO_ROOTS='/workspace/repos,/Users/mohammadsalehpour/Projects' \
+npm run start:dev
+```

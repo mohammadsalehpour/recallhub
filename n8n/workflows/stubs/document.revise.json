@@ -1,0 +1,100 @@
+{
+  "id": "KfP6m4VN8rZVD1Ga",
+  "name": "RecallHub LLM - document.revise",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "recallhub/document.revise",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "document-revise-webhook",
+      "name": "RecallHub Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "recallhub-document-revise"
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst config = {\n  \"workflowCode\": \"document.revise\",\n  \"artifactType\": \"final_document\",\n  \"prompt\": \"Revise the document using the provided review feedback. Keep changes traceable and call out unresolved questions.\",\n  \"schemaName\": \"recallhub_document_revise_artifact\",\n  \"responseSchema\": {\n    \"type\": \"object\",\n    \"additionalProperties\": false,\n    \"required\": [\n      \"title\",\n      \"contentMarkdown\",\n      \"contentJson\"\n    ],\n    \"properties\": {\n      \"title\": {\n        \"type\": \"string\"\n      },\n      \"contentMarkdown\": {\n        \"type\": \"string\"\n      },\n      \"contentJson\": {\n        \"type\": \"object\",\n        \"additionalProperties\": false,\n        \"required\": [\n          \"summary\",\n          \"recommendations\",\n          \"unknowns\",\n          \"risks\",\n          \"sections\",\n          \"acceptedChanges\",\n          \"remainingQuestions\"\n        ],\n        \"properties\": {\n          \"summary\": {\n            \"type\": \"string\"\n          },\n          \"recommendations\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          },\n          \"unknowns\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          },\n          \"risks\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          },\n          \"sections\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          },\n          \"acceptedChanges\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          },\n          \"remainingQuestions\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          }\n        }\n      }\n    }\n  }\n};\n\nconst incoming = $input.first().json;\nconst body = incoming.body && typeof incoming.body === 'object' ? incoming.body : incoming;\nconst headers = incoming.headers || {};\nconst runId = body.runId;\nconst workflowCode = body.workflowCode || config.workflowCode;\nconst timestamp = String(body.timestamp || Math.floor(Date.now() / 1000));\nconst triggerSecret = $env.N8N_TRIGGER_SECRET || '';\nconst headerSignature = headerValue(headers, 'x-recallhub-trigger-signature');\nconst triggerRaw = JSON.stringify(body);\nconst expectedTriggerSignature = triggerSecret\n  ? crypto.createHmac('sha256', triggerSecret).update(timestamp + '.' + runId + '.' + triggerRaw).digest('hex')\n  : '';\n\nlet status = 'succeeded';\nlet error;\nlet artifact;\n\ntry {\n  if (!runId) {\n    throw recallhubError('MISSING_RUN_ID', 'runId is required');\n  }\n  if (workflowCode !== config.workflowCode) {\n    throw recallhubError('WORKFLOW_CODE_MISMATCH', 'Expected ' + config.workflowCode + ', got ' + workflowCode);\n  }\n  if (!triggerSecret) {\n    throw recallhubError('MISSING_TRIGGER_SECRET', 'N8N_TRIGGER_SECRET is required');\n  }\n  if (!headerSignature) {\n    throw recallhubError('MISSING_TRIGGER_SIGNATURE', 'NestJS trigger signature header is required');\n  }\n  if (headerSignature !== expectedTriggerSignature) {\n    throw recallhubError('INVALID_TRIGGER_SIGNATURE', 'NestJS trigger signature did not match');\n  }\n\n  artifact = await buildArtifact(body);\n} catch (caught) {\n  status = 'failed';\n  error = serializeError(caught);\n}\n\nconst callbackBody = status === 'succeeded'\n  ? { runId, workflowCode: config.workflowCode, status, n8nExecutionId: String($execution.id), artifact }\n  : { runId, workflowCode: config.workflowCode, status, n8nExecutionId: String($execution.id), error };\nconst callbackRaw = JSON.stringify(callbackBody);\nconst callbackTimestamp = String(Math.floor(Date.now() / 1000));\nconst callbackSecret = $env.N8N_CALLBACK_SECRET || '';\nconst callbackSignature = crypto.createHmac('sha256', callbackSecret)\n  .update(callbackTimestamp + '.' + runId + '.' + callbackRaw)\n  .digest('hex');\n\nreturn [{\n  json: {\n    callbackUrl: body.callbackUrl || $env.N8N_CALLBACK_URL || 'http://api:3000/api/v1/integrations/n8n/callback',\n    callbackBody,\n    callbackTimestamp,\n    callbackSignature,\n  },\n}];\n\nasync function buildArtifact(triggerBody) {\n  const mode = ($env.N8N_LLM_MODE || 'openai').toLowerCase();\n  if (mode === 'contract_stub') {\n    return contractArtifact(triggerBody);\n  }\n  if (mode !== 'openai') {\n    throw recallhubError('UNSUPPORTED_LLM_MODE', 'Unsupported N8N_LLM_MODE: ' + mode);\n  }\n\n  const apiKey = $env.OPENAI_API_KEY || '';\n  if (!apiKey) {\n    throw recallhubError('MISSING_LLM_API_KEY', 'OPENAI_API_KEY is required when N8N_LLM_MODE=openai');\n  }\n\n  const baseUrl = ($env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\\/+$/, '');\n  const model = $env.N8N_LLM_MODEL || '';\n  if (!model) {\n    throw recallhubError('MISSING_LLM_MODEL', 'N8N_LLM_MODEL is required when N8N_LLM_MODE=openai');\n  }\n  const timeoutMs = Number($env.N8N_LLM_TIMEOUT_MS || 60000);\n  const controller = new AbortController();\n  const timeout = setTimeout(() => controller.abort(), timeoutMs);\n\n  try {\n    const response = await fetch(baseUrl + '/responses', {\n      method: 'POST',\n      headers: {\n        authorization: 'Bearer ' + apiKey,\n        'content-type': 'application/json',\n      },\n      body: JSON.stringify({\n        model,\n        input: [\n          {\n            role: 'developer',\n            content: [\n              {\n                type: 'input_text',\n                text: developerPrompt(),\n              },\n            ],\n          },\n          {\n            role: 'user',\n            content: [\n              {\n                type: 'input_text',\n                text: userPrompt(triggerBody),\n              },\n            ],\n          },\n        ],\n        text: {\n          format: {\n            type: 'json_schema',\n            name: config.schemaName,\n            strict: true,\n            schema: config.responseSchema,\n          },\n        },\n      }),\n      signal: controller.signal,\n    });\n\n    const responseText = await response.text();\n    let responseJson;\n    try {\n      responseJson = responseText ? JSON.parse(responseText) : {};\n    } catch {\n      throw recallhubError('OPENAI_INVALID_JSON', 'OpenAI response was not JSON', { responseText: responseText.slice(0, 1000) });\n    }\n\n    if (!response.ok) {\n      throw recallhubError('OPENAI_HTTP_ERROR', 'OpenAI request failed with HTTP ' + response.status, responseJson);\n    }\n\n    const outputText = extractOutputText(responseJson);\n    if (!outputText) {\n      throw recallhubError('OPENAI_EMPTY_OUTPUT', 'OpenAI response did not include output text', responseJson);\n    }\n\n    let generated;\n    try {\n      generated = JSON.parse(outputText);\n    } catch {\n      throw recallhubError('OPENAI_OUTPUT_PARSE_ERROR', 'OpenAI output was not valid JSON', { outputText });\n    }\n\n    return normalizeArtifact(generated, 'openai', model);\n  } catch (caught) {\n    if (caught && caught.name === 'AbortError') {\n      throw recallhubError('OPENAI_TIMEOUT', 'OpenAI request timed out after ' + timeoutMs + 'ms');\n    }\n    throw caught;\n  } finally {\n    clearTimeout(timeout);\n  }\n}\n\nfunction developerPrompt() {\n  return [\n    'You are RecallHub n8n executor.',\n    'n8n is only an automation and LLM executor. It must not persist domain data.',\n    'Return one JSON object only. It must match the provided JSON schema exactly.',\n    'Do not invent facts. If context is missing, write unknown or needs_user_input in the relevant fields.',\n    'Produce artifact content for workflow ' + config.workflowCode + ' and artifact type ' + config.artifactType + '.',\n    config.prompt,\n  ].join('\\n');\n}\n\nfunction userPrompt(triggerBody) {\n  return JSON.stringify({\n    runId: triggerBody.runId,\n    workflowCode: triggerBody.workflowCode,\n    input: triggerBody.input || {},\n    contextPacket: triggerBody.contextPacket || null,\n  }, null, 2);\n}\n\nfunction normalizeArtifact(generated, source, model) {\n  if (!generated || typeof generated !== 'object' || Array.isArray(generated)) {\n    throw recallhubError('INVALID_LLM_ARTIFACT', 'LLM output must be an object');\n  }\n  if (!generated.contentJson || typeof generated.contentJson !== 'object' || Array.isArray(generated.contentJson)) {\n    throw recallhubError('INVALID_LLM_ARTIFACT', 'LLM output must include object contentJson');\n  }\n\n  return {\n    type: config.artifactType,\n    title: String(generated.title || config.workflowCode + ' artifact'),\n    contentMarkdown: String(generated.contentMarkdown || '# ' + config.workflowCode),\n    contentJson: generated.contentJson,\n  };\n}\n\nfunction contractArtifact(triggerBody) {\n  const title = 'Local contract artifact for ' + config.workflowCode;\n  if (config.artifactType === 'development_spec') {\n    return {\n      type: config.artifactType,\n      title,\n      contentMarkdown: '# Development Spec\\n\\nLocal contract mode. Set N8N_LLM_MODE=openai and OPENAI_API_KEY for real LLM output.',\n      contentJson: {\n        summary: 'Local contract mode development spec.',\n        goals: ['Verify RecallHub workflow transport and callback handling'],\n        scope: {\n          in: ['Signed trigger', 'Signed callback', 'Artifact validation'],\n          out: ['Real LLM generation'],\n        },\n        plan: [\n          {\n            step: 'Configure OPENAI_API_KEY',\n            why: 'Real LLM mode requires provider credentials',\n            expectedOutcome: 'n8n generates this artifact through the OpenAI Responses API',\n          },\n        ],\n        openQuestions: [],\n        risks: ['Local contract mode is not production LLM output'],\n      },\n    };\n  }\n  if (config.artifactType === 'review') {\n    return {\n      type: config.artifactType,\n      title,\n      contentMarkdown: '# Document Review\\n\\nLocal contract mode. Set N8N_LLM_MODE=openai and OPENAI_API_KEY for real LLM output.',\n      contentJson: {\n        summary: 'Local contract mode review artifact.',\n        reviewerRole: 'n8n-local-contract',\n        decision: 'changes_requested',\n        score: 0.5,\n        notesMd: 'Local contract mode does not perform a real review.',\n        blockers: [],\n        warnings: ['Local contract mode is not production LLM output'],\n        recommendations: ['Configure OPENAI_API_KEY before production use'],\n        unknowns: [],\n      },\n    };\n  }\n\n  return {\n    type: config.artifactType,\n    title,\n    contentMarkdown: '# ' + config.workflowCode + '\\n\\nLocal contract mode. Set N8N_LLM_MODE=openai and OPENAI_API_KEY for real LLM output.',\n    contentJson: {\n      summary: 'Local contract mode artifact.',\n      recommendations: ['Configure OPENAI_API_KEY before production use'],\n      unknowns: [],\n      risks: ['Local contract mode is not production LLM output'],\n      receivedInput: triggerBody.input || {},\n    },\n  };\n}\n\nfunction extractOutputText(responseJson) {\n  if (typeof responseJson.output_text === 'string') {\n    return responseJson.output_text.trim();\n  }\n\n  const texts = [];\n  for (const item of responseJson.output || []) {\n    for (const content of item.content || []) {\n      if (typeof content.text === 'string') {\n        texts.push(content.text);\n      }\n    }\n  }\n\n  return texts.join('\\n').trim();\n}\n\nfunction headerValue(headers, name) {\n  const direct = headers[name] || headers[name.toLowerCase()] || headers[name.toUpperCase()];\n  if (direct) return Array.isArray(direct) ? direct[0] : direct;\n\n  const found = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase());\n  if (!found) return undefined;\n  return Array.isArray(found[1]) ? found[1][0] : found[1];\n}\n\nfunction recallhubError(code, message, details) {\n  const error = new Error(message);\n  error.code = code;\n  error.details = details;\n  return error;\n}\n\nfunction serializeError(caught) {\n  return {\n    code: caught && caught.code ? String(caught.code) : 'N8N_LLM_WORKFLOW_ERROR',\n    message: caught && caught.message ? String(caught.message) : 'Unknown n8n LLM workflow error',\n    details: caught && caught.details ? caught.details : undefined,\n  };\n}"
+      },
+      "id": "document-revise-build-callback",
+      "name": "Build LLM Artifact Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-recallhub-timestamp",
+              "value": "={{$json.callbackTimestamp}}"
+            },
+            {
+              "name": "x-recallhub-run-id",
+              "value": "={{$json.callbackBody.runId}}"
+            },
+            {
+              "name": "x-recallhub-signature",
+              "value": "={{$json.callbackSignature}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.callbackBody}}",
+        "options": {}
+      },
+      "id": "document-revise-post-callback",
+      "name": "POST RecallHub Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "RecallHub Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build LLM Artifact Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build LLM Artifact Callback": {
+      "main": [
+        [
+          {
+            "node": "POST RecallHub Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

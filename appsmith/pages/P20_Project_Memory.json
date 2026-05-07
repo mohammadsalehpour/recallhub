@@ -1,0 +1,16 @@
+{
+  "pageName": "P20_Project_Memory",
+  "purpose": "Read-only project memory.",
+  "onPageLoad": ["JS_AppShell.startupFromUrl", "qMemoryModules.run", "qMemoryFiles.run", "qMemoryChunks.run", "qMemoryEvents.run", "qMemoryCommits.run"],
+  "widgets": [
+    { "name": "tabsMemory", "type": "Tabs", "tabs": ["Modules", "Files", "Chunks", "Events", "Commits"] },
+    { "name": "tblMemoryModules", "type": "Table", "tab": "Modules", "data": "{{qMemoryModules.data}}" },
+    { "name": "tblMemoryFiles", "type": "Table", "tab": "Files", "data": "{{qMemoryFiles.data}}" },
+    { "name": "tblMemoryChunks", "type": "Table", "tab": "Chunks", "data": "{{qMemoryChunks.data}}" },
+    { "name": "tblMemoryEvents", "type": "Table", "tab": "Events", "data": "{{qMemoryEvents.data}}" },
+    { "name": "tblMemoryCommits", "type": "Table", "tab": "Commits", "data": "{{qMemoryCommits.data}}" },
+    { "name": "btnRefreshMemory", "type": "IconButton", "icon": "refresh-ccw", "onClick": "Promise.all([qMemoryModules.run(), qMemoryFiles.run(), qMemoryChunks.run(), qMemoryEvents.run(), qMemoryCommits.run()])" }
+  ],
+  "queries": ["qMemoryModules", "qMemoryFiles", "qMemoryChunks", "qMemoryEvents", "qMemoryCommits"],
+  "rules": ["No write query is present on this page."]
+}

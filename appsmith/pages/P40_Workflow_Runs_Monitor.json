@@ -1,0 +1,23 @@
+{
+  "pageName": "P40_Workflow_Runs_Monitor",
+  "purpose": "Monitor workflow definitions, runs, details and events.",
+  "onPageLoad": ["qWorkflowList.run", "qWorkflowRunsList.run"],
+  "widgets": [
+    { "name": "selWorkflowCode", "type": "Select", "options": "{{(qWorkflowList.data || []).map(w => ({ label: w.name, value: w.code }))}}" },
+    { "name": "txtWorkflowInput", "type": "Input", "inputType": "multiline" },
+    { "name": "txtActiveRunSummary", "type": "Text", "text": "{{JS_RunMonitor.selectedRunSummary()}}" },
+    { "name": "btnStartWorkflowRun", "type": "Button", "onClick": "JS_RunMonitor.startManualWorkflow()" },
+    { "name": "tblWorkflowRuns", "type": "Table", "data": "{{JS_AppShell.runRows()}}", "onRowSelected": "JS_RunMonitor.selectRun(tblWorkflowRuns.selectedRow)" },
+    { "name": "jsonWorkflowRun", "type": "JSONForm", "sourceData": "{{qWorkflowRunGet.data}}" },
+    { "name": "jsonWorkflowArtifact", "type": "JSONForm", "sourceData": "{{JS_RunMonitor.selectedRunArtifact()}}" },
+    { "name": "jsonWorkflowError", "type": "JSONForm", "sourceData": "{{JS_RunMonitor.selectedRunError()}}" },
+    { "name": "tblWorkflowRunEvents", "type": "Table", "data": "{{qWorkflowRunEvents.data}}" },
+    { "name": "btnPollRun", "type": "Button", "disabled": "{{!appsmith.store.activeRunId}}", "onClick": "JS_RunMonitor.pollRun(appsmith.store.activeRunId)" },
+    { "name": "btnRetryRun", "type": "Button", "disabled": "{{!JS_RunMonitor.canRetry()}}", "onClick": "JS_RunMonitor.retryRun()" },
+    { "name": "btnCancelRun", "type": "Button", "disabled": "{{!JS_RunMonitor.canCancel()}}", "onClick": "JS_RunMonitor.cancelRun()" },
+    { "name": "btnRefreshRuns", "type": "IconButton", "icon": "refresh-ccw", "onClick": "JS_RunMonitor.refreshRuns()" }
+  ],
+  "queries": ["qWorkflowList", "qWorkflowRunsList", "qWorkflowRunGet", "qWorkflowRunEvents", "qWorkflowRunCreate", "qWorkflowRunRetry", "qWorkflowRunCancel"],
+  "jsObjects": ["JS_AppShell", "JS_RunMonitor"],
+  "rules": ["Terminal statuses are succeeded, failed, cancelled, timed_out, callback_missing.", "Polling is limited and backs off."]
+}

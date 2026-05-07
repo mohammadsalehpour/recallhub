@@ -1,0 +1,190 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - link "Appsmith logo" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "Appsmith logo" [ref=e10]
+      - generic [ref=e1303] [cursor=pointer]:
+        - generic [ref=e1304]: Pages /
+        - generic [ref=e1305]:
+          - generic [ref=e1306]: Page1
+          - img [ref=e1308]
+    - generic [ref=e11]:
+      - link "Mohammad's apps" [ref=e56] [cursor=pointer]:
+        - /url: /applications?workspaceId=69f0b2df6d4d1d52a856b05e
+        - generic [ref=e57]: Mohammad's apps
+      - text: /
+      - generic [ref=e58] [cursor=pointer]:
+        - generic [ref=e62]: RecallHub Control Plane
+        - img [ref=e64]
+    - generic [ref=e12]:
+      - button "⌘ K" [ref=e13] [cursor=pointer]:
+        - img [ref=e15]
+        - generic [ref=e17]: ⌘ K
+      - button [ref=e19] [cursor=pointer]:
+        - img [ref=e21]
+      - button "Share" [ref=e23] [cursor=pointer]:
+        - generic [ref=e24]:
+          - img [ref=e26]
+          - generic [ref=e28]: Share
+      - generic [ref=e29]:
+        - button "Deploy" [ref=e31] [cursor=pointer]:
+          - generic [ref=e32]:
+            - img [ref=e34]
+            - generic [ref=e36]: Deploy
+        - button [ref=e37] [cursor=pointer]:
+          - img [ref=e40]
+  - generic [ref=e67]:
+    - generic [ref=e69]:
+      - generic [ref=e71]:
+        - generic [ref=e73]:
+          - button [ref=e74] [cursor=pointer]:
+            - img [ref=e76]
+          - generic [ref=e79]: Editor
+        - generic [ref=e80]:
+          - button [ref=e82] [cursor=pointer]:
+            - img [ref=e84]
+            - img [ref=e87]
+          - button [ref=e90] [cursor=pointer]:
+            - img [ref=e92]
+          - button [ref=e97] [cursor=pointer]:
+            - img [ref=e99]
+      - generic [ref=e1310]:
+        - generic [ref=e1311]:
+          - generic [ref=e1313]:
+            - generic [ref=e1315] [cursor=pointer]:
+              - img [ref=e1317]
+              - generic [ref=e1321]: Queries
+            - generic [ref=e1323] [cursor=pointer]:
+              - img [ref=e1325]
+              - generic [ref=e1327]: JS
+            - generic [ref=e1329] [cursor=pointer]:
+              - img [ref=e1331]
+              - generic [ref=e1333]: UI
+          - generic [ref=e1546]:
+            - generic [ref=e1586]:
+              - generic [ref=e1589]:
+                - img [ref=e1591]
+                - textbox "Search" [ref=e1593]
+              - button "Add" [ref=e1594] [cursor=pointer]:
+                - img [ref=e1597]
+            - listitem [ref=e1604] [cursor=pointer]:
+              - generic [ref=e1606]:
+                - img [ref=e1609]
+                - generic [ref=e1618]: JSObject1
+        - generic [ref=e1362]:
+          - generic [ref=e1363]:
+            - generic [ref=e1364]:
+              - tablist [ref=e1367]:
+                - generic [ref=e1619] [cursor=pointer]:
+                  - generic [ref=e1620]:
+                    - img [ref=e1623]
+                    - generic [ref=e1632]: JSObject1
+                  - tab "Close tab" [ref=e1633]:
+                    - img [ref=e1637]
+              - button "Add new tab" [ref=e1640] [cursor=pointer]:
+                - img [ref=e1643]
+            - button [ref=e1386] [cursor=pointer]:
+              - img [ref=e1389]
+          - generic [ref=e1647]:
+            - generic [ref=e1649]:
+              - generic [ref=e1651]:
+                - button "myFun1" [ref=e1652] [cursor=pointer]:
+                  - generic [ref=e1653]:
+                    - img [ref=e1655]
+                    - generic [ref=e1659]: myFun1
+                    - img [ref=e1661]
+                - button "Run" [ref=e1663] [cursor=pointer]:
+                  - generic [ref=e1665]: Run
+              - button [ref=e1666] [cursor=pointer]:
+                - img [ref=e1668]
+              - button [ref=e1671] [cursor=pointer]:
+                - img [ref=e1674]
+            - generic [ref=e1678]:
+              - generic [ref=e1685]:
+                - textbox [ref=e1686]
+                - generic [ref=e1689]:
+                  - generic [ref=e1690]:
+                    - generic [ref=e1691]: "1"
+                    - text: "▾ export default {"
+                  - generic [ref=e1692]:
+                    - generic [ref=e1693]: "2"
+                    - text: "myVar1: [],"
+                  - generic [ref=e1695]:
+                    - generic [ref=e1696]: "3"
+                    - text: "myVar2: {},"
+                  - generic [ref=e1698]:
+                    - generic [ref=e1699]: "4"
+                    - text: ▾
+                    - text: "myFun1 () {"
+                  - generic [ref=e1701]:
+                    - generic [ref=e1702]: "5"
+                    - generic [ref=e1704]: // write code here
+                  - generic [ref=e1705]:
+                    - generic [ref=e1706]: "6"
+                    - generic [ref=e1708]: // this.myVar1 = [1,2,3]
+                  - generic [ref=e1709]:
+                    - generic [ref=e1710]: "7"
+                    - generic [ref=e1711]: "},"
+                  - generic [ref=e1712]:
+                    - generic [ref=e1713]: "8"
+                    - text: ▾
+                    - text: "async myFun2 () {"
+                  - generic [ref=e1715]:
+                    - generic [ref=e1716]: "9"
+                    - generic [ref=e1718]: // use async-await or promises
+                  - generic [ref=e1719]:
+                    - generic [ref=e1720]: "10"
+                    - generic [ref=e1722]: // await storeValue('varName', 'hello world')
+                  - generic [ref=e1723]:
+                    - generic [ref=e1724]: "11"
+                    - generic [ref=e1725]: "}"
+                  - generic [ref=e1726]:
+                    - generic [ref=e1727]: "12"
+                    - text: "}"
+              - generic [ref=e1733]:
+                - tablist [ref=e1735]:
+                  - tab "Response" [ref=e1736] [cursor=pointer]:
+                    - generic [ref=e1737]: Response
+                  - tab "Logs" [ref=e1738] [cursor=pointer]:
+                    - generic [ref=e1739]: Logs
+                  - tab "Linter" [ref=e1740] [cursor=pointer]:
+                    - generic [ref=e1741]: Linter
+                  - tab "State" [ref=e1742] [cursor=pointer]:
+                    - generic [ref=e1743]: State
+                - button [ref=e1744] [cursor=pointer]:
+                  - img [ref=e1747]
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - heading "Drag and drop a widget here" [level=2]
+    - generic [ref=e490]:
+      - generic [ref=e491]:
+        - generic [ref=e493]:
+          - generic [ref=e494] [cursor=pointer]:
+            - combobox [ref=e496]
+            - generic "Production"
+          - generic:
+            - generic:
+              - img
+        - generic [ref=e498] [cursor=pointer]:
+          - img [ref=e500]
+          - button "Connect Git" [ref=e502]:
+            - generic [ref=e504]: Connect Git
+      - generic [ref=e505]:
+        - button "Debug" [ref=e506] [cursor=pointer]:
+          - generic [ref=e507]:
+            - img [ref=e509]
+            - generic [ref=e511]: Debug
+        - button "Help" [ref=e513] [cursor=pointer]:
+          - generic [ref=e514]:
+            - img [ref=e516]
+            - generic [ref=e518]: Help
+  - iframe [ref=e48]:
+    

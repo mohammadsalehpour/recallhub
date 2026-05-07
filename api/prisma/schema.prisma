@@ -118,6 +118,9 @@ model Project {
   artifacts               Artifact[]
   workflowRuns            WorkflowRun[]
   auditLogs               AuditLog[]
+  documentReviews         DocumentReview[]
+  humanApprovals          HumanApproval[]
+  decisions               Decision[]
 
   @@map("rh_projects")
   @@schema("recallhub_core")
@@ -347,6 +350,9 @@ model WorkItem {
   memoryEvents      MemoryEvent[]
   memoryCommits     MemoryCommit[]
   workflowRuns      WorkflowRun[]
+  documentReviews   DocumentReview[]
+  humanApprovals    HumanApproval[]
+  decisions         Decision[]
 
   @@index([projectId])
   @@map("rh_work_items")
@@ -370,9 +376,75 @@ model Artifact {
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   workItem        WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  documentReviews DocumentReview[]
+  humanApprovals  HumanApproval[]
 
   @@index([projectId])
   @@map("rh_artifacts")
+  @@schema("recallhub_work")
+}
+
+model DocumentReview {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  workItemId   String   @map("work_item_id") @db.Uuid
+  artifactId   String   @map("artifact_id") @db.Uuid
+  reviewerRole String   @map("reviewer_role")
+  decision     String
+  score        Int?
+  notesMd      String?  @map("notes_md")
+  blockersJson Json?    @map("blockers_json")
+  warningsJson Json?    @map("warnings_json")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem     WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  artifact     Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([workItemId])
+  @@index([artifactId])
+  @@map("rh_document_reviews")
+  @@schema("recallhub_work")
+}
+
+model HumanApproval {
+  id         String    @id @default(uuid()) @db.Uuid
+  projectId  String    @map("project_id") @db.Uuid
+  workItemId String    @map("work_item_id") @db.Uuid
+  artifactId String?   @map("artifact_id") @db.Uuid
+  decision   String
+  reviewedBy String?   @map("reviewed_by") @db.Uuid
+  reviewNote String?   @map("review_note")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem   WorkItem  @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  artifact   Artifact? @relation(fields: [artifactId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([workItemId])
+  @@index([artifactId])
+  @@map("rh_human_approvals")
+  @@schema("recallhub_work")
+}
+
+model Decision {
+  id               String    @id @default(uuid()) @db.Uuid
+  projectId        String    @map("project_id") @db.Uuid
+  workItemId       String?   @map("work_item_id") @db.Uuid
+  title            String
+  context          String
+  decision         String
+  alternativesJson Json?     @map("alternatives_json")
+  consequences     String?
+  status           String    @default("proposed")
+  createdBy        String?   @map("created_by") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem         WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([workItemId])
+  @@map("rh_decisions")
   @@schema("recallhub_work")
 }
 
@@ -430,6 +502,20 @@ model WorkflowEvent {
 
   @@index([workflowRunId])
   @@map("rh_workflow_events")
+  @@schema("recallhub_workflow")
+}
+
+model N8nCallbackReceipt {
+  id           String   @id @default(uuid()) @db.Uuid
+  runId        String   @map("run_id") @db.Uuid
+  workflowCode String   @map("workflow_code")
+  signature    String
+  timestamp    String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([runId, signature])
+  @@index([runId])
+  @@map("rh_n8n_callback_receipts")
   @@schema("recallhub_workflow")
 }
 

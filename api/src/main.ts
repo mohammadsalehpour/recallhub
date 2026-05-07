@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { BigIntSerializationInterceptor } from './common/bigint-serialization.interceptor';
+import { setupOpenApi } from './openapi';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -15,6 +16,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalInterceptors(new BigIntSerializationInterceptor());
+  setupOpenApi(app);
 
   await app.listen(process.env.PORT ?? 3000);
 }
