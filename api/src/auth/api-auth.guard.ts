@@ -33,7 +33,7 @@ export class ApiAuthGuard implements CanActivate {
     const apiKey = this.configService.getOrThrow<string>('APP_API_KEY');
     if (this.safeEqual(token, apiKey)) {
       request.recallhubAuth = {
-        subject: 'appsmith-api-key',
+        subject: 'control-plane-api-key',
         roles: this.configService
           .get<string>('APP_API_KEY_ROLES', 'admin,ops,user')
           .split(',')

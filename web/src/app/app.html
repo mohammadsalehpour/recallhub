@@ -1,0 +1,49 @@
+<main class="bg-app text-slate-900">
+  <div class="app-frame">
+    <aside class="app-sidebar">
+      <a class="brand-lockup" routerLink="/project-setup" aria-label="RecallHub home">
+        <span class="brand-mark">RH</span>
+        <span>
+          <strong>RecallHub</strong>
+          <small>Control Plane</small>
+        </span>
+      </a>
+
+      <nav aria-label="Main navigation" class="app-nav">
+        @for (page of visiblePages(); track page.path) {
+          <a
+            class="nav-item"
+            routerLinkActive="active"
+            [routerLink]="page.path"
+            [attr.aria-label]="page.label"
+          >
+            <span class="nav-icon" aria-hidden="true">{{ page.icon }}</span>
+            <span>{{ page.label }}</span>
+          </a>
+        }
+      </nav>
+
+      <section class="status-card" aria-label="Active context">
+        <span class="eyebrow">Active Context</span>
+        <dl>
+          <div>
+            <dt>Project</dt>
+            <dd>{{ state.activeProjectCode() || 'not selected' }}</dd>
+          </div>
+          <div>
+            <dt>Work item</dt>
+            <dd>{{ state.activeWorkItemId() || 'not selected' }}</dd>
+          </div>
+          <div>
+            <dt>Role</dt>
+            <dd>{{ state.activeRole() }}</dd>
+          </div>
+        </dl>
+      </section>
+    </aside>
+
+    <section class="content-shell">
+      <router-outlet />
+    </section>
+  </div>
+</main>

@@ -2,6 +2,37 @@
 
 RecallHub is a control plane for project memory and AI-assisted development workflows.
 
+## Angular Control Plane
+
+The Angular UI lives in `web/` and is the RecallHub control-plane frontend. It talks to the NestJS API only:
+
+- Project setup wizard
+- Project memory tables
+- Work item lifecycle controls with status-aware gating
+- Workflow run monitor
+- Stability dashboard with admin confirmation
+- Audit timeline
+
+Run locally:
+
+```bash
+cd web
+npm install
+npm start
+```
+
+Then open:
+
+```http
+http://localhost:4200
+```
+
+Run with Docker:
+
+```bash
+docker compose -f infra/docker-compose.yml up -d --build web
+```
+
 ## Local Start
 
 ```bash
@@ -13,7 +44,7 @@ npm install
 npm run prisma:generate
 npm run db:apply:local
 cd ..
-docker compose -f infra/docker-compose.yml up -d --build api appsmith n8n
+docker compose -f infra/docker-compose.yml up -d --build api web n8n
 bash n8n/scripts/import-and-publish-stubs.sh
 ```
 
@@ -44,7 +75,13 @@ n8n UI:
 GET http://localhost:5678
 ```
 
-The local Appsmith token can be set to `APP_API_KEY` from `.env` for API-key mode.
+Angular UI:
+
+```http
+GET http://localhost:4200
+```
+
+The local Angular token can be set to `APP_API_KEY` from `.env` for API-key mode.
 
 For host-local API development instead of the Docker API container, stop `api` and run:
 
@@ -69,4 +106,4 @@ Note: Prisma 7.8 currently validates and generates SQL for this multi-schema set
 ## Next tracks (non-NestJS)
 
 - `n8n/`: artifact-only n8n workflows with signed callbacks and optional real LLM execution.
-- `appsmith/`: Appsmith page/query development plan aligned with current API surface.
+- `web/`: Angular 21 + Tailwind control plane.

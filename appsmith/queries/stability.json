@@ -1,8 +1,0 @@
-[
-  { "name": "qStabilityHealth", "method": "GET", "path": "/health/stability" },
-  {
-    "name": "qStabilityReconcile",
-    "method": "POST",
-    "path": "/admin/reconcile/workflow-runs?stale_minutes={{JS_AppShell.staleMinutes()}}"
-  }
-]

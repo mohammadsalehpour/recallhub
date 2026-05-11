@@ -106,14 +106,14 @@ services:
       - ../n8n/workflows/stubs:/workflows/stubs:ro
     command: ["import:workflow", "--separate", "--input=/workflows/stubs"]
 
-  appsmith:
-    image: appsmith/appsmith-ce:latest
+  web:
+    build:
+      context: ../web
+    depends_on:
+      - api
     ports:
-      - "8080:80"
-    volumes:
-      - appsmith_stacks:/appsmith-stacks
+      - "4200:80"
 
 volumes:
   postgres_data:
   n8n_data:
-  appsmith_stacks:
