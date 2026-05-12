@@ -3,34 +3,30 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { ApiService, messageFromError } from '../../core/api.service';
 import { AppStateService } from '../../core/app-state.service';
+import { I18nService, TranslationKey } from '../../core/i18n.service';
 import { JsonRecord } from '../../core/models';
+import { LocalizePipe } from '../../shared/localize.pipe';
 
 type MemoryTab = 'modules' | 'files' | 'chunks' | 'events' | 'commits';
 
 @Component({
   selector: 'app-project-memory-page',
-  imports: [CommonModule, FormsModule, JsonPipe],
+  imports: [CommonModule, FormsModule, JsonPipe, LocalizePipe],
   template: `
-    <section class="page-title">
-      <span class="eyebrow">P20 Project Memory</span>
-      <h1>Project Memory</h1>
-      <p>Memory read-only است؛ داده‌ها فقط از NestJS API خوانده می‌شوند.</p>
-    </section>
-
     @if (error()) {
       <p class="alert error mb-4">{{ error() }}</p>
     }
 
     <section class="glass-panel p-5">
       <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div class="tabs" role="tablist" aria-label="Memory tabs">
+        <div class="tabs" role="tablist" [attr.aria-label]="'memory.tabsLabel' | localize">
           @for (tab of tabs; track tab.key) {
             <button class="tab" [class.active]="activeTab() === tab.key" type="button" (click)="activeTab.set(tab.key)" role="tab">
-              {{ tab.label }}
+              {{ tab.labelKey | localize }}
             </button>
           }
         </div>
-        <button class="btn icon-button" type="button" title="Refresh memory" (click)="load()">↻</button>
+        <button class="btn icon-button" type="button" [attr.title]="'memory.refresh' | localize" (click)="load()">↻</button>
       </div>
 
       <div class="overflow-auto">
@@ -50,7 +46,7 @@ type MemoryTab = 'modules' | 'files' | 'chunks' | 'events' | 'commits';
                 }
               </tr>
             } @empty {
-              <tr><td [attr.colspan]="columns().length || 1">No rows</td></tr>
+              <tr><td [attr.colspan]="columns().length || 1">{{ 'memory.noRows' | localize }}</td></tr>
             }
           </tbody>
         </table>
@@ -58,7 +54,7 @@ type MemoryTab = 'modules' | 'files' | 'chunks' | 'events' | 'commits';
     </section>
 
     <section class="soft-panel mt-5 p-5">
-      <h2 class="mb-3 text-lg font-black">Raw Selection</h2>
+      <h2 class="mb-3 text-lg font-black">{{ 'memory.rawSelection' | localize }}</h2>
       <pre class="pressed-panel max-h-96 overflow-auto p-4 text-xs">{{ activeRows()[0] | json }}</pre>
     </section>
   `,
@@ -66,14 +62,15 @@ type MemoryTab = 'modules' | 'files' | 'chunks' | 'events' | 'commits';
 })
 export class ProjectMemoryPage {
   private readonly api = inject(ApiService);
+  private readonly i18n = inject(I18nService);
   protected readonly state = inject(AppStateService);
 
-  protected readonly tabs: { key: MemoryTab; label: string }[] = [
-    { key: 'modules', label: 'Modules' },
-    { key: 'files', label: 'Files' },
-    { key: 'chunks', label: 'Chunks' },
-    { key: 'events', label: 'Events' },
-    { key: 'commits', label: 'Commits' },
+  protected readonly tabs: { key: MemoryTab; labelKey: TranslationKey }[] = [
+    { key: 'modules', labelKey: 'memory.modules' },
+    { key: 'files', labelKey: 'memory.files' },
+    { key: 'chunks', labelKey: 'memory.chunks' },
+    { key: 'events', labelKey: 'memory.events' },
+    { key: 'commits', labelKey: 'memory.commits' },
   ];
   protected readonly activeTab = signal<MemoryTab>('modules');
   protected readonly modules = signal<JsonRecord[]>([]);
@@ -90,7 +87,7 @@ export class ProjectMemoryPage {
   async load() {
     const code = this.state.activeProjectCode();
     if (!code) {
-      this.error.set('ابتدا پروژه فعال را انتخاب کنید.');
+      this.error.set(this.i18n._('memory.selectProjectFirst'));
       return;
     }
     this.error.set('');

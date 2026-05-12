@@ -3,17 +3,13 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService, messageFromError } from '../../core/api.service';
 import { AppStateService } from '../../core/app-state.service';
+import { I18nService } from '../../core/i18n.service';
+import { LocalizePipe } from '../../shared/localize.pipe';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LocalizePipe],
   template: `
-    <section class="page-title">
-      <span class="eyebrow">P04 Profile</span>
-      <h1>User Profile</h1>
-      <p>پروفایل، عکس کاربر و تغییر کلمه عبور از همین صفحه مدیریت می‌شود.</p>
-    </section>
-
     @if (notice()) {
       <p class="alert success mb-4">{{ notice() }}</p>
     }
@@ -23,42 +19,42 @@ import { AppStateService } from '../../core/app-state.service';
 
     <div class="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Profile</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'profile.title' | localize }}</h2>
         <div class="mb-5 flex items-center gap-4">
           <img
             class="h-20 w-20 rounded-full border border-slate-200 object-cover"
             [src]="avatar()"
-            alt="Profile avatar"
+            [attr.alt]="'profile.avatar' | localize"
           />
           <div class="field min-w-0 flex-1">
-            <label for="avatar">بارگذاری عکس پروفایل</label>
+            <label for="avatar">{{ 'profile.avatar' | localize }}</label>
             <input id="avatar" type="file" accept="image/*" (change)="selectAvatar($event)" />
           </div>
         </div>
 
         <form class="grid gap-4" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
           <div class="form-grid">
-            <div class="field"><label for="firstName">نام</label><input id="firstName" formControlName="first_name" /></div>
-            <div class="field"><label for="lastName">نام خانوادگی</label><input id="lastName" formControlName="last_name" /></div>
-            <div class="field"><label for="mobile">شماره موبایل</label><input id="mobile" formControlName="mobile" /></div>
-            <div class="field"><label for="email">ایمیل</label><input id="email" [value]="user()?.email" disabled /></div>
+            <div class="field"><label for="firstName">{{ 'common.firstName' | localize }}</label><input id="firstName" formControlName="first_name" /></div>
+            <div class="field"><label for="lastName">{{ 'common.lastName' | localize }}</label><input id="lastName" formControlName="last_name" /></div>
+            <div class="field"><label for="mobile">{{ 'common.mobile' | localize }}</label><input id="mobile" formControlName="mobile" /></div>
+            <div class="field"><label for="email">{{ 'common.email' | localize }}</label><input id="email" [value]="user()?.email" disabled /></div>
           </div>
-          <button class="btn primary w-fit" type="submit">ذخیره پروفایل</button>
+          <button class="btn primary w-fit" type="submit">{{ 'profile.updateProfile' | localize }}</button>
         </form>
       </section>
 
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Change Password</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'profile.changePassword' | localize }}</h2>
         <form class="grid gap-4" [formGroup]="passwordForm" (ngSubmit)="changePassword()">
           <div class="field">
-            <label for="currentPassword">کلمه عبور فعلی</label>
+            <label for="currentPassword">{{ 'profile.currentPassword' | localize }}</label>
             <input id="currentPassword" type="password" formControlName="current_password" autocomplete="current-password" />
           </div>
           <div class="field">
-            <label for="newPassword">کلمه عبور جدید</label>
+            <label for="newPassword">{{ 'profile.newPassword' | localize }}</label>
             <input id="newPassword" type="password" formControlName="new_password" autocomplete="new-password" />
           </div>
-          <button class="btn primary w-fit" type="submit">تغییر کلمه عبور</button>
+          <button class="btn primary w-fit" type="submit">{{ 'profile.updatePassword' | localize }}</button>
         </form>
       </section>
     </div>
@@ -68,6 +64,7 @@ import { AppStateService } from '../../core/app-state.service';
 export class ProfilePage {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly api = inject(ApiService);
+  private readonly i18n = inject(I18nService);
   protected readonly state = inject(AppStateService);
 
   protected readonly notice = signal('');
@@ -122,7 +119,7 @@ export class ProfilePage {
         avatar_url: this.avatarDataUrl() || this.user()?.avatar_url,
       });
       this.state.refreshUser(user);
-      this.notice.set('پروفایل ذخیره شد.');
+      this.notice.set(this.i18n._('profile.profileUpdated'));
     });
   }
 
@@ -135,7 +132,7 @@ export class ProfilePage {
     await this.capture(async () => {
       await this.api.changePassword(this.passwordForm.getRawValue());
       this.passwordForm.reset();
-      this.notice.set('کلمه عبور تغییر کرد.');
+      this.notice.set(this.i18n._('profile.passwordUpdated'));
     });
   }
 

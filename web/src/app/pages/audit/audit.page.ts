@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ApiService, messageFromError } from '../../core/api.service';
 import { AppStateService } from '../../core/app-state.service';
 import { AuditLog, WorkflowEvent, WorkflowRun } from '../../core/models';
+import { LocalizePipe } from '../../shared/localize.pipe';
 
 type TimelineRow = {
   source: string;
@@ -14,26 +15,20 @@ type TimelineRow = {
 
 @Component({
   selector: 'app-audit-page',
-  imports: [CommonModule, JsonPipe],
+  imports: [CommonModule, JsonPipe, LocalizePipe],
   template: `
-    <section class="page-title">
-      <span class="eyebrow">P60 Audit Timeline</span>
-      <h1>Audit Timeline</h1>
-      <p>Timeline از audit log و workflow runها ساخته می‌شود و read-only است.</p>
-    </section>
-
     @if (error()) {
       <p class="alert error mb-4">{{ error() }}</p>
     }
 
     <section class="glass-panel p-5">
       <div class="mb-4 flex items-center justify-between gap-3">
-        <h2 class="text-xl font-black">Timeline</h2>
-        <button class="btn icon-button" type="button" title="Refresh" (click)="load()">↻</button>
+        <h2 class="text-xl font-black">{{ 'audit.timeline' | localize }}</h2>
+        <button class="btn icon-button" type="button" [attr.title]="'common.refresh' | localize" (click)="load()">↻</button>
       </div>
       <div class="overflow-auto">
         <table class="data-table">
-          <thead><tr><th>Source</th><th>Time</th><th>Type</th><th>Summary</th><th>Resource</th></tr></thead>
+          <thead><tr><th>{{ 'common.source' | localize }}</th><th>{{ 'common.time' | localize }}</th><th>{{ 'common.type' | localize }}</th><th>{{ 'common.summary' | localize }}</th><th>{{ 'common.resource' | localize }}</th></tr></thead>
           <tbody>
             @for (row of timeline(); track row.source + row.resourceId + row.timestamp) {
               <tr>
@@ -50,7 +45,7 @@ type TimelineRow = {
     </section>
 
     <section class="soft-panel mt-5 p-5">
-      <h2 class="mb-4 text-xl font-black">Selected Workflow Events</h2>
+      <h2 class="mb-4 text-xl font-black">{{ 'audit.selectedWorkflowEvents' | localize }}</h2>
       <pre class="pressed-panel max-h-96 overflow-auto p-4 text-xs">{{ selectedRunEvents() | json }}</pre>
     </section>
   `,

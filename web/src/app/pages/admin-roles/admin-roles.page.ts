@@ -2,18 +2,14 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService, messageFromError } from '../../core/api.service';
+import { I18nService } from '../../core/i18n.service';
 import { ManagedRole, Permission } from '../../core/models';
+import { LocalizePipe } from '../../shared/localize.pipe';
 
 @Component({
   selector: 'app-admin-roles-page',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LocalizePipe],
   template: `
-    <section class="page-title">
-      <span class="eyebrow">P80 Roles & Permissions</span>
-      <h1>Roles</h1>
-      <p>Roleها مجموعه‌ای از permissionها هستند و دسترسی مؤثر کاربر از union نقش‌های او ساخته می‌شود.</p>
-    </section>
-
     @if (notice()) {
       <p class="alert success mb-4">{{ notice() }}</p>
     }
@@ -24,14 +20,14 @@ import { ManagedRole, Permission } from '../../core/models';
     <div class="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
       <section class="glass-panel p-5">
         <div class="mb-4 flex items-center justify-between gap-3">
-          <h2 class="text-xl font-black">Create Role</h2>
-          <button class="btn icon-button" type="button" title="Refresh" (click)="load()">↻</button>
+          <h2 class="text-xl font-black">{{ 'roles.createTitle' | localize }}</h2>
+          <button class="btn icon-button" type="button" [attr.title]="'common.refresh' | localize" (click)="load()">↻</button>
         </div>
         <form class="grid gap-3" [formGroup]="roleForm" (ngSubmit)="createRole()">
-          <div class="field"><label for="code">Code</label><input id="code" formControlName="code" /></div>
-          <div class="field"><label for="name">Name</label><input id="name" formControlName="name" /></div>
-          <div class="field"><label for="description">Description</label><textarea id="description" formControlName="description"></textarea></div>
-          <button class="btn primary w-fit" type="submit">Create Role</button>
+          <div class="field"><label for="code">{{ 'common.code' | localize }}</label><input id="code" formControlName="code" /></div>
+          <div class="field"><label for="name">{{ 'common.name' | localize }}</label><input id="name" formControlName="name" /></div>
+          <div class="field"><label for="description">{{ 'common.description' | localize }}</label><textarea id="description" formControlName="description"></textarea></div>
+          <button class="btn primary w-fit" type="submit">{{ 'roles.createButton' | localize }}</button>
         </form>
 
         <div class="mt-5 grid gap-2">
@@ -44,12 +40,12 @@ import { ManagedRole, Permission } from '../../core/models';
       </section>
 
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Permissions</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'roles.permissions' | localize }}</h2>
         @if (selectedRole()) {
           <div class="mb-4">
             <span class="pill">{{ selectedRole()?.code }}</span>
             @if (selectedRole()?.system) {
-              <span class="pill warn ml-2">system</span>
+              <span class="pill warn ml-2">{{ 'roles.system' | localize }}</span>
             }
           </div>
 
@@ -67,7 +63,7 @@ import { ManagedRole, Permission } from '../../core/models';
             }
           </div>
         } @else {
-          <p class="text-sm font-bold text-slate-600">یک role را انتخاب کنید.</p>
+          <p class="text-sm font-bold text-slate-600">{{ 'roles.selectRole' | localize }}</p>
         }
       </section>
     </div>
@@ -77,6 +73,7 @@ import { ManagedRole, Permission } from '../../core/models';
 export class AdminRolesPage {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly api = inject(ApiService);
+  private readonly i18n = inject(I18nService);
 
   protected readonly roles = signal<ManagedRole[]>([]);
   protected readonly permissions = signal<Permission[]>([]);
@@ -128,7 +125,7 @@ export class AdminRolesPage {
       const role = await this.api.createRole(this.roleForm.getRawValue());
       this.selectedRole.set(role);
       this.roleForm.reset();
-      this.notice.set('Role ساخته شد.');
+      this.notice.set(this.i18n._('roles.created'));
       await this.load();
     });
   }
@@ -142,7 +139,7 @@ export class AdminRolesPage {
         ? await this.api.removeRolePermission(role.id, permission.id)
         : await this.api.assignRolePermission(role.id, permission.id);
       this.selectedRole.set(updated);
-      this.notice.set('Permission assignment به‌روزرسانی شد.');
+      this.notice.set(this.i18n._('roles.permissionUpdated'));
       await this.load();
     });
   }

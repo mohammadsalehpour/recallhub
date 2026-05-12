@@ -21,6 +21,7 @@ import {
   WorkflowRun,
 } from './models';
 import { AppStateService } from './app-state.service';
+import { I18nService } from './i18n.service';
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
@@ -28,6 +29,7 @@ type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 export class ApiService {
   private readonly http = inject(HttpClient);
   private readonly state = inject(AppStateService);
+  private readonly i18n = inject(I18nService);
 
   health() {
     return this.request<{ name: string; status: string; timestamp: string }>('GET', '');
@@ -263,6 +265,7 @@ export class ApiService {
     const token = this.state.token();
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
+      'x-recallhub-locale': this.i18n.locale(),
       ...(authenticate && token ? { Authorization: `Bearer ${token}` } : {}),
       ...extraHeaders,
     });

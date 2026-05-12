@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService, messageFromError } from '../../core/api.service';
 import { AppStateService } from '../../core/app-state.service';
+import { I18nService } from '../../core/i18n.service';
 import {
   ConfigFile,
   Project,
@@ -12,17 +13,12 @@ import {
   compactRecord,
   projectCodeOf,
 } from '../../core/models';
+import { LocalizePipe } from '../../shared/localize.pipe';
 
 @Component({
   selector: 'app-project-setup-page',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LocalizePipe],
   template: `
-    <section class="page-title">
-      <span class="eyebrow">P10 Project Setup Wizard</span>
-      <h1>Project Setup</h1>
-      <p>Profile پروژه، repository، pathها و config fileها باید صریح وارد شوند. UI مقدار domain را حدس نمی‌زند.</p>
-    </section>
-
     @if (notice()) {
       <p class="alert success mb-4">{{ notice() }}</p>
     }
@@ -33,70 +29,70 @@ import {
     <div class="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
       <section class="glass-panel p-5">
         <div class="mb-4 flex items-center justify-between gap-3">
-          <h2 class="text-xl font-black">Create Project</h2>
-          <button class="btn icon-button" type="button" title="Refresh" (click)="refresh()">↻</button>
+          <h2 class="text-xl font-black">{{ 'setup.createProject' | localize }}</h2>
+          <button class="btn icon-button" type="button" [attr.title]="'common.refresh' | localize" (click)="refresh()">↻</button>
         </div>
 
         <form class="grid gap-4" [formGroup]="projectForm" (ngSubmit)="createProject()">
           <div class="form-grid">
             <div class="field">
-              <label for="projectCode">Project Code</label>
+              <label for="projectCode">{{ 'common.code' | localize }}</label>
               <input id="projectCode" formControlName="project_code" />
             </div>
             <div class="field">
-              <label for="projectName">Name</label>
+              <label for="projectName">{{ 'common.name' | localize }}</label>
               <input id="projectName" formControlName="name" />
             </div>
             <div class="field md:col-span-2">
-              <label for="projectDescription">Description</label>
+              <label for="projectDescription">{{ 'common.description' | localize }}</label>
               <textarea id="projectDescription" formControlName="description"></textarea>
             </div>
             <div class="field">
-              <label for="businessDomain">Business Domain</label>
+              <label for="businessDomain">{{ 'setup.businessDomain' | localize }}</label>
               <input id="businessDomain" formControlName="business_domain" placeholder="ERP, CRM, internal-tool" />
             </div>
             <div class="field">
-              <label for="frameworkName">Framework Name</label>
+              <label for="frameworkName">{{ 'setup.frameworkName' | localize }}</label>
               <input id="frameworkName" formControlName="framework_name" placeholder="odoo, nestjs, django" />
             </div>
             <div class="field">
-              <label for="frameworkVersion">Framework Version</label>
+              <label for="frameworkVersion">{{ 'setup.frameworkVersion' | localize }}</label>
               <input id="frameworkVersion" formControlName="framework_version" />
             </div>
           </div>
 
           <div class="soft-panel p-4">
             <div class="mb-3 flex items-center justify-between gap-3">
-              <h3 class="font-black">Tech Stack</h3>
-              <button class="btn icon-button" type="button" title="Add tech item" (click)="addTech()">+</button>
+              <h3 class="font-black">{{ 'setup.techStack' | localize }}</h3>
+              <button class="btn icon-button" type="button" [attr.title]="'setup.addTechItem' | localize" (click)="addTech()">+</button>
             </div>
             <div class="grid gap-3">
               @for (item of techStack(); track $index) {
                 <div class="grid gap-2 md:grid-cols-[1fr_1fr_0.8fr_0.8fr_auto]">
-                  <input class="mini-input" aria-label="category" [value]="item.category" (input)="updateTech($index, 'category', $any($event.target).value)" placeholder="category" />
-                  <input class="mini-input" aria-label="name" [value]="item.name" (input)="updateTech($index, 'name', $any($event.target).value)" placeholder="name" />
-                  <input class="mini-input" aria-label="version" [value]="item.version ?? ''" (input)="updateTech($index, 'version', $any($event.target).value)" placeholder="version" />
-                  <select class="mini-input" aria-label="source" [value]="item.source" (change)="updateTech($index, 'source', $any($event.target).value)">
-                    <option value="declared">declared</option>
-                    <option value="detected">detected</option>
-                    <option value="imported">imported</option>
+                  <input class="mini-input" [attr.aria-label]="'common.category' | localize" [value]="item.category" (input)="updateTech($index, 'category', $any($event.target).value)" [attr.placeholder]="'common.category' | localize" />
+                  <input class="mini-input" [attr.aria-label]="'common.name' | localize" [value]="item.name" (input)="updateTech($index, 'name', $any($event.target).value)" [attr.placeholder]="'common.name' | localize" />
+                  <input class="mini-input" [attr.aria-label]="'common.version' | localize" [value]="item.version ?? ''" (input)="updateTech($index, 'version', $any($event.target).value)" [attr.placeholder]="'common.version' | localize" />
+                  <select class="mini-input" [attr.aria-label]="'common.source' | localize" [value]="item.source" (change)="updateTech($index, 'source', $any($event.target).value)">
+                    <option value="declared">{{ 'enum.declared' | localize }}</option>
+                    <option value="detected">{{ 'enum.detected' | localize }}</option>
+                    <option value="imported">{{ 'enum.imported' | localize }}</option>
                   </select>
-                  <button class="btn danger icon-button" type="button" title="Remove" (click)="removeTech($index)">×</button>
+                  <button class="btn danger icon-button" type="button" [attr.title]="'common.remove' | localize" (click)="removeTech($index)">×</button>
                 </div>
               }
             </div>
           </div>
 
-          <button class="btn primary w-fit" type="submit">Create Project</button>
+          <button class="btn primary w-fit" type="submit">{{ 'setup.createProject' | localize }}</button>
         </form>
       </section>
 
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Projects</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'setup.projects' | localize }}</h2>
         <div class="overflow-auto">
           <table class="data-table">
             <thead>
-              <tr><th>Code</th><th>Name</th><th>Status</th><th></th></tr>
+              <tr><th>{{ 'common.code' | localize }}</th><th>{{ 'common.name' | localize }}</th><th>{{ 'common.status' | localize }}</th><th></th></tr>
             </thead>
             <tbody>
               @for (project of projects(); track project.id) {
@@ -104,7 +100,7 @@ import {
                   <td>{{ projectCodeOf(project) }}</td>
                   <td>{{ project.name }}</td>
                   <td><span class="pill">{{ project.status }}</span></td>
-                  <td><button class="btn icon-button" type="button" title="Select project" (click)="selectProject(project)">✓</button></td>
+                  <td><button class="btn icon-button" type="button" [attr.title]="'common.select' | localize" (click)="selectProject(project)">✓</button></td>
                 </tr>
               }
             </tbody>
@@ -115,11 +111,11 @@ import {
 
     <div class="mt-5 grid gap-5 xl:grid-cols-3">
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Repository</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'setup.repository' | localize }}</h2>
         <form class="grid gap-3" [formGroup]="repoForm" (ngSubmit)="createRepository()">
-          <div class="field"><label for="repoName">Repo Name</label><input id="repoName" formControlName="repo_name" /></div>
+          <div class="field"><label for="repoName">{{ 'setup.repoName' | localize }}</label><input id="repoName" formControlName="repo_name" /></div>
           <div class="field">
-            <label for="locatorType">Locator Type</label>
+            <label for="locatorType">{{ 'setup.locatorType' | localize }}</label>
             <select id="locatorType" formControlName="locator_type">
               <option value="local_path">local_path</option>
               <option value="git_url">git_url</option>
@@ -127,12 +123,12 @@ import {
               <option value="network_share">network_share</option>
             </select>
           </div>
-          <div class="field"><label for="repoRoot">Repo Root</label><input id="repoRoot" formControlName="repo_root" /></div>
-          <div class="field"><label for="defaultBranch">Default Branch</label><input id="defaultBranch" formControlName="default_branch" /></div>
+          <div class="field"><label for="repoRoot">{{ 'setup.repoRoot' | localize }}</label><input id="repoRoot" formControlName="repo_root" /></div>
+          <div class="field"><label for="defaultBranch">{{ 'setup.defaultBranch' | localize }}</label><input id="defaultBranch" formControlName="default_branch" /></div>
           <div class="button-row">
-            <button class="btn primary" type="submit">Add</button>
-            <button class="btn" type="button" (click)="validateRepository()">Validate</button>
-            <button class="btn" type="button" (click)="sync()">Sync</button>
+            <button class="btn primary" type="submit">{{ 'common.add' | localize }}</button>
+            <button class="btn" type="button" (click)="validateRepository()">{{ 'common.validate' | localize }}</button>
+            <button class="btn" type="button" (click)="sync()">{{ 'common.sync' | localize }}</button>
           </div>
         </form>
         <ul class="mt-4 grid gap-2">
@@ -146,13 +142,13 @@ import {
       </section>
 
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Paths</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'setup.paths' | localize }}</h2>
         <form class="grid gap-3" [formGroup]="pathForm" (ngSubmit)="createPath()">
-          <div class="field"><label for="path">Path</label><input id="path" formControlName="path" /></div>
-          <div class="field"><label for="pathType">Path Type</label><input id="pathType" formControlName="path_type" placeholder="custom_addons, docs, ignore" /></div>
-          <div class="field"><label for="scanPolicy">Scan Policy</label><select id="scanPolicy" formControlName="scan_policy"><option value="include">include</option><option value="metadata_only">metadata_only</option><option value="exclude">exclude</option></select></div>
-          <div class="field"><label for="ownership">Ownership</label><input id="ownership" formControlName="ownership" placeholder="team_owned, vendor, generated" /></div>
-          <button class="btn primary w-fit" type="submit">Add Path</button>
+          <div class="field"><label for="path">{{ 'setup.path' | localize }}</label><input id="path" formControlName="path" /></div>
+          <div class="field"><label for="pathType">{{ 'setup.pathType' | localize }}</label><input id="pathType" formControlName="path_type" placeholder="custom_addons, docs, ignore" /></div>
+          <div class="field"><label for="scanPolicy">{{ 'setup.scanPolicy' | localize }}</label><select id="scanPolicy" formControlName="scan_policy"><option value="include">{{ 'enum.include' | localize }}</option><option value="metadata_only">{{ 'enum.metadataOnly' | localize }}</option><option value="exclude">{{ 'enum.exclude' | localize }}</option></select></div>
+          <div class="field"><label for="ownership">{{ 'setup.ownership' | localize }}</label><input id="ownership" formControlName="ownership" placeholder="team_owned, vendor, generated" /></div>
+          <button class="btn primary w-fit" type="submit">{{ 'setup.addPath' | localize }}</button>
         </form>
         <div class="mt-4 flex flex-wrap gap-2">
           @for (path of paths(); track path.id) {
@@ -162,13 +158,13 @@ import {
       </section>
 
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Config Files</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'setup.configFiles' | localize }}</h2>
         <form class="grid gap-3" [formGroup]="configForm" (ngSubmit)="createConfigFile()">
-          <div class="field"><label for="relativePath">Relative Path</label><input id="relativePath" formControlName="relative_path" /></div>
-          <div class="field"><label for="configType">Config Type</label><input id="configType" formControlName="config_type" /></div>
-          <div class="field"><label for="containsSecrets">Contains Secrets</label><select id="containsSecrets" formControlName="contains_secrets"><option value="unknown">unknown</option><option value="true">true</option><option value="false">false</option></select></div>
-          <div class="field"><label for="configScanPolicy">Scan Policy</label><select id="configScanPolicy" formControlName="scan_policy"><option value="metadata_only">metadata_only</option><option value="parse_safe">parse_safe</option><option value="exclude">exclude</option></select></div>
-          <button class="btn primary w-fit" type="submit">Add Config</button>
+          <div class="field"><label for="relativePath">{{ 'setup.relativePath' | localize }}</label><input id="relativePath" formControlName="relative_path" /></div>
+          <div class="field"><label for="configType">{{ 'setup.configType' | localize }}</label><input id="configType" formControlName="config_type" /></div>
+          <div class="field"><label for="containsSecrets">{{ 'setup.containsSecrets' | localize }}</label><select id="containsSecrets" formControlName="contains_secrets"><option value="unknown">{{ 'enum.unknown' | localize }}</option><option value="true">{{ 'enum.true' | localize }}</option><option value="false">{{ 'enum.false' | localize }}</option></select></div>
+          <div class="field"><label for="configScanPolicy">{{ 'setup.scanPolicy' | localize }}</label><select id="configScanPolicy" formControlName="scan_policy"><option value="metadata_only">{{ 'enum.metadataOnly' | localize }}</option><option value="parse_safe">{{ 'enum.parseSafe' | localize }}</option><option value="exclude">{{ 'enum.exclude' | localize }}</option></select></div>
+          <button class="btn primary w-fit" type="submit">{{ 'setup.addConfig' | localize }}</button>
         </form>
         <div class="mt-4 flex flex-wrap gap-2">
           @for (file of configFiles(); track file.id) {
@@ -183,6 +179,7 @@ import {
 export class ProjectSetupPage {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly api = inject(ApiService);
+  private readonly i18n = inject(I18nService);
   protected readonly state = inject(AppStateService);
   protected readonly projectCodeOf = projectCodeOf;
 
@@ -251,7 +248,7 @@ export class ProjectSetupPage {
   async createProject() {
     if (this.projectForm.invalid || this.normalizedTechStack().length === 0) {
       this.projectForm.markAllAsTouched();
-      this.error.set('Project profile و حداقل یک declared tech stack item اجباری هستند.');
+      this.error.set(this.i18n._('setup.projectProfileRequired'));
       return;
     }
 
@@ -271,7 +268,7 @@ export class ProjectSetupPage {
         }),
       );
       this.state.selectProject(projectCodeOf(project), project.id);
-      this.notice.set('پروژه ثبت شد.');
+      this.notice.set(this.i18n._('setup.projectCreated'));
       await this.refresh();
     });
   }
@@ -290,7 +287,7 @@ export class ProjectSetupPage {
         compactRecord({ ...this.repoForm.getRawValue(), is_primary: true }),
       );
       this.state.selectRepository(repo.id);
-      this.notice.set('Repository ثبت شد.');
+      this.notice.set(this.i18n._('setup.repositoryCreated'));
       await this.refreshProjectDetails();
     });
   }
@@ -303,12 +300,12 @@ export class ProjectSetupPage {
     const code = this.requireProjectCode();
     const repoId = this.state.activeRepositoryId();
     if (!code || !repoId) {
-      this.error.set('ابتدا پروژه و repository را انتخاب کنید.');
+      this.error.set(this.i18n._('setup.selectProjectAndRepository'));
       return;
     }
     await this.capture(async () => {
       await this.api.validateRepository(code, repoId);
-      this.notice.set('Repository توسط backend validate شد.');
+      this.notice.set(this.i18n._('setup.repositoryValidated'));
       await this.refreshProjectDetails();
     });
   }
@@ -320,7 +317,9 @@ export class ProjectSetupPage {
       const result = await this.api.syncProject(code, this.state.idempotencyKey('project-sync'));
       const runId = this.extractRunId(result);
       if (runId) this.state.selectRun(runId);
-      this.notice.set(runId ? `Sync شروع شد: ${runId}` : 'Sync اجرا شد.');
+      this.notice.set(
+        runId ? this.i18n.format('setup.syncStarted', { id: runId }) : this.i18n._('setup.syncExecuted'),
+      );
     });
   }
 
@@ -328,12 +327,12 @@ export class ProjectSetupPage {
     const code = this.requireProjectCode();
     const repository_id = this.state.activeRepositoryId();
     if (!code || !repository_id || this.pathForm.invalid) {
-      this.error.set('پروژه، repository و فیلدهای path اجباری هستند.');
+      this.error.set(this.i18n._('setup.pathRequired'));
       return;
     }
     await this.capture(async () => {
       await this.api.createPath(code, { repository_id, ...this.pathForm.getRawValue() });
-      this.notice.set('Path ثبت شد.');
+      this.notice.set(this.i18n._('setup.pathCreated'));
       await this.refreshProjectDetails();
     });
   }
@@ -342,12 +341,12 @@ export class ProjectSetupPage {
     const code = this.requireProjectCode();
     const repository_id = this.state.activeRepositoryId();
     if (!code || !repository_id || this.configForm.invalid) {
-      this.error.set('پروژه، repository و فیلدهای config اجباری هستند.');
+      this.error.set(this.i18n._('setup.configRequired'));
       return;
     }
     await this.capture(async () => {
       await this.api.createConfigFile(code, { repository_id, required: false, ...this.configForm.getRawValue() });
-      this.notice.set('Config file ثبت شد.');
+      this.notice.set(this.i18n._('setup.configCreated'));
       await this.refreshProjectDetails();
     });
   }
@@ -383,7 +382,7 @@ export class ProjectSetupPage {
 
   private requireProjectCode() {
     const code = this.state.activeProjectCode();
-    if (!code) this.error.set('ابتدا پروژه فعال را انتخاب کنید.');
+    if (!code) this.error.set(this.i18n._('setup.selectProjectFirst'));
     return code;
   }
 

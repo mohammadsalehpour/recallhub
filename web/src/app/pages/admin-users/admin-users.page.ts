@@ -2,18 +2,14 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService, messageFromError } from '../../core/api.service';
+import { I18nService } from '../../core/i18n.service';
 import { CurrentUser, ManagedRole } from '../../core/models';
+import { LocalizePipe } from '../../shared/localize.pipe';
 
 @Component({
   selector: 'app-admin-users-page',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LocalizePipe],
   template: `
-    <section class="page-title">
-      <span class="eyebrow">P70 User Management</span>
-      <h1>Users</h1>
-      <p>مدیریت کاربران و تخصیص نقش‌ها از backend RBAC خوانده و ثبت می‌شود.</p>
-    </section>
-
     @if (notice()) {
       <p class="alert success mb-4">{{ notice() }}</p>
     }
@@ -24,12 +20,12 @@ import { CurrentUser, ManagedRole } from '../../core/models';
     <div class="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
       <section class="glass-panel p-5">
         <div class="mb-4 flex items-center justify-between gap-3">
-          <h2 class="text-xl font-black">Users</h2>
-          <button class="btn icon-button" type="button" title="Refresh" (click)="load()">↻</button>
+          <h2 class="text-xl font-black">{{ 'users.title' | localize }}</h2>
+          <button class="btn icon-button" type="button" [attr.title]="'common.refresh' | localize" (click)="load()">↻</button>
         </div>
         <div class="overflow-auto">
           <table class="data-table">
-            <thead><tr><th>Name</th><th>Username</th><th>Status</th><th>Roles</th><th></th></tr></thead>
+            <thead><tr><th>{{ 'common.name' | localize }}</th><th>{{ 'common.username' | localize }}</th><th>{{ 'common.status' | localize }}</th><th>{{ 'common.roles' | localize }}</th><th></th></tr></thead>
             <tbody>
               @for (user of users(); track user.id) {
                 <tr>
@@ -37,7 +33,7 @@ import { CurrentUser, ManagedRole } from '../../core/models';
                   <td>{{ user.username }}</td>
                   <td><span class="pill" [class.good]="user.status === 'active'" [class.bad]="user.status !== 'active'">{{ user.status }}</span></td>
                   <td>{{ roleSummary(user) }}</td>
-                  <td><button class="btn icon-button" type="button" title="Select user" (click)="selectUser(user)">✓</button></td>
+                  <td><button class="btn icon-button" type="button" [attr.title]="'common.select' | localize" (click)="selectUser(user)">✓</button></td>
                 </tr>
               }
             </tbody>
@@ -46,22 +42,22 @@ import { CurrentUser, ManagedRole } from '../../core/models';
       </section>
 
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Edit User</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'users.editTitle' | localize }}</h2>
         @if (selectedUser()) {
           <form class="grid gap-3" [formGroup]="userForm" (ngSubmit)="saveUser()">
             <div class="form-grid">
-              <div class="field"><label for="firstName">First Name</label><input id="firstName" formControlName="first_name" /></div>
-              <div class="field"><label for="lastName">Last Name</label><input id="lastName" formControlName="last_name" /></div>
-              <div class="field"><label for="username">Username</label><input id="username" formControlName="username" /></div>
-              <div class="field"><label for="email">Email</label><input id="email" formControlName="email" /></div>
-              <div class="field"><label for="mobile">Mobile</label><input id="mobile" formControlName="mobile" /></div>
-              <div class="field"><label for="status">Status</label><select id="status" formControlName="status"><option value="active">active</option><option value="invited">invited</option><option value="suspended">suspended</option><option value="disabled">disabled</option></select></div>
+              <div class="field"><label for="firstName">{{ 'common.firstName' | localize }}</label><input id="firstName" formControlName="first_name" /></div>
+              <div class="field"><label for="lastName">{{ 'common.lastName' | localize }}</label><input id="lastName" formControlName="last_name" /></div>
+              <div class="field"><label for="username">{{ 'common.username' | localize }}</label><input id="username" formControlName="username" /></div>
+              <div class="field"><label for="email">{{ 'common.email' | localize }}</label><input id="email" formControlName="email" /></div>
+              <div class="field"><label for="mobile">{{ 'common.mobile' | localize }}</label><input id="mobile" formControlName="mobile" /></div>
+              <div class="field"><label for="status">{{ 'common.status' | localize }}</label><select id="status" formControlName="status"><option value="active">{{ 'enum.active' | localize }}</option><option value="invited">{{ 'enum.invited' | localize }}</option><option value="suspended">{{ 'enum.suspended' | localize }}</option><option value="disabled">{{ 'enum.disabled' | localize }}</option></select></div>
             </div>
-            <button class="btn primary w-fit" type="submit">Save User</button>
+            <button class="btn primary w-fit" type="submit">{{ 'users.save' | localize }}</button>
           </form>
 
           <div class="mt-5 grid gap-3">
-            <h3 class="font-black">Roles</h3>
+            <h3 class="font-black">{{ 'common.roles' | localize }}</h3>
             <div class="button-row">
               @for (role of roles(); track role.id) {
                 <button
@@ -76,7 +72,7 @@ import { CurrentUser, ManagedRole } from '../../core/models';
             </div>
           </div>
         } @else {
-          <p class="text-sm font-bold text-slate-600">یک کاربر را انتخاب کنید.</p>
+          <p class="text-sm font-bold text-slate-600">{{ 'users.selectUser' | localize }}</p>
         }
       </section>
     </div>
@@ -86,6 +82,7 @@ import { CurrentUser, ManagedRole } from '../../core/models';
 export class AdminUsersPage {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly api = inject(ApiService);
+  private readonly i18n = inject(I18nService);
 
   protected readonly users = signal<CurrentUser[]>([]);
   protected readonly roles = signal<ManagedRole[]>([]);
@@ -126,7 +123,7 @@ export class AdminUsersPage {
   }
 
   roleSummary(user: CurrentUser) {
-    return user.roles.map((role) => role.code).join(', ') || 'none';
+    return user.roles.map((role) => role.code).join(', ') || this.i18n._('users.none');
   }
 
   hasRole(role: ManagedRole) {
@@ -139,7 +136,7 @@ export class AdminUsersPage {
     await this.capture(async () => {
       const updated = await this.api.updateUser(user.id, this.userForm.getRawValue());
       this.selectedUser.set(updated);
-      this.notice.set('User ذخیره شد.');
+      this.notice.set(this.i18n._('users.updated'));
       await this.load();
     });
   }
@@ -152,7 +149,7 @@ export class AdminUsersPage {
         ? await this.api.removeUserRole(user.id, role.id)
         : await this.api.assignUserRole(user.id, role.id);
       this.selectedUser.set(updated);
-      this.notice.set('Role assignment به‌روزرسانی شد.');
+      this.notice.set(this.i18n._('roles.permissionUpdated'));
       await this.load();
     });
   }

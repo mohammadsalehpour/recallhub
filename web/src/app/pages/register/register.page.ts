@@ -3,22 +3,24 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { ApiService, messageFromError } from '../../core/api.service';
 import { AppStateService } from '../../core/app-state.service';
+import { I18nService } from '../../core/i18n.service';
+import { LocalizePipe } from '../../shared/localize.pipe';
 
 @Component({
   selector: 'app-register-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, LocalizePipe],
   template: `
     <div class="auth-stack">
       <div class="auth-brand-outside" aria-label="RecallHub">
         <span class="auth-logo">RH</span>
         <div>
           <strong>RecallHub</strong>
-          <small>Control Plane</small>
+          <small>{{ 'app.subtitle' | localize }}</small>
         </div>
       </div>
 
       <section class="auth-card auth-card-wide" aria-labelledby="registerTitle">
-        <h1 id="registerTitle" class="auth-title">ثبت نام</h1>
+        <h1 id="registerTitle" class="auth-title">{{ 'auth.registerTitle' | localize }}</h1>
 
         @if (error()) {
           <p class="alert error">{{ error() }}</p>
@@ -27,41 +29,41 @@ import { AppStateService } from '../../core/app-state.service';
         <form class="auth-form" [formGroup]="form" (ngSubmit)="register()">
           <div class="form-grid">
             <div class="field">
-              <label for="firstName">نام</label>
+              <label for="firstName">{{ 'auth.firstName' | localize }}</label>
               <input id="firstName" formControlName="first_name" autocomplete="given-name" />
             </div>
             <div class="field">
-              <label for="lastName">نام خانوادگی</label>
+              <label for="lastName">{{ 'auth.lastName' | localize }}</label>
               <input id="lastName" formControlName="last_name" autocomplete="family-name" />
             </div>
             <div class="field">
-              <label for="mobile">شماره موبایل</label>
+              <label for="mobile">{{ 'auth.mobile' | localize }}</label>
               <input id="mobile" formControlName="mobile" autocomplete="tel" inputmode="tel" />
             </div>
             <div class="field">
-              <label for="username">نام کاربری</label>
+              <label for="username">{{ 'auth.username' | localize }}</label>
               <input id="username" formControlName="username" autocomplete="username" />
             </div>
             <div class="field md:col-span-2">
-              <label for="email">ایمیل</label>
+              <label for="email">{{ 'auth.email' | localize }}</label>
               <input id="email" type="email" formControlName="email" autocomplete="email" />
             </div>
             <div class="field">
-              <label for="password">کلمه عبور</label>
+              <label for="password">{{ 'auth.password' | localize }}</label>
               <input id="password" type="password" formControlName="password" autocomplete="new-password" />
             </div>
             <div class="field">
-              <label for="confirm">تکرار کلمه عبور</label>
+              <label for="confirm">{{ 'auth.confirmPassword' | localize }}</label>
               <input id="confirm" type="password" formControlName="password_confirmation" autocomplete="new-password" />
             </div>
           </div>
 
-          <button class="btn primary auth-submit" type="submit">ثبت نام</button>
+          <button class="btn primary auth-submit" type="submit">{{ 'auth.registerButton' | localize }}</button>
         </form>
 
         <p class="auth-switch">
-          حساب دارید؟
-          <a routerLink="/login">وارد شوید</a>
+          {{ 'auth.haveAccount' | localize }}
+          <a routerLink="/login">{{ 'auth.loginLink' | localize }}</a>
         </p>
       </section>
     </div>
@@ -73,6 +75,7 @@ export class RegisterPage {
   private readonly api = inject(ApiService);
   private readonly state = inject(AppStateService);
   private readonly router = inject(Router);
+  protected readonly i18n = inject(I18nService);
 
   protected readonly error = signal('');
   protected readonly form = this.fb.group({
@@ -93,7 +96,7 @@ export class RegisterPage {
 
     const value = this.form.getRawValue();
     if (value.password !== value.password_confirmation) {
-      this.error.set('کلمه عبور و تکرار آن یکسان نیستند.');
+      this.error.set(this.i18n._('auth.passwordMismatch'));
       return;
     }
 

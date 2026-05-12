@@ -1719,6 +1719,55 @@ Nginx:
 [اجباری] API key/JWT در image bake نشود و فقط توسط کاربر/محیط runtime داده شود.
 ```
 
+### 17.8 Internationalization / چندزبانه‌سازی
+
+RecallHub باید از ابتدا UI دو زبانه داشته باشد:
+
+```text
+fa = فارسی، راست‌به‌چپ، locale پیش‌فرض محصول
+en = English، چپ‌به‌راست
+```
+
+تصمیم پیاده‌سازی Angular:
+
+```text
+[تصمیم] برای RecallHub از runtime i18n service مبتنی بر Angular signals استفاده شود.
+[تصمیم] متن‌ها در فایل‌های JSON جداگانه نگهداری شوند:
+  web/src/app/i18n/fa.json
+  web/src/app/i18n/en.json
+[تصمیم] در templateها ترجمه با pipe نوشته شود:
+  {{ 'some.key' | localize }}
+[تصمیم] در TypeScript فقط برای پیام‌های runtime از helper کوتاه `i18n._('some.key')` استفاده شود.
+[دلیل] کاربر باید بدون rebuild و بدون reload اجباری بین فارسی و انگلیسی سوییچ کند.
+[دلیل] Angular official i18n برای extraction/translation files/build per locale عالی است، اما برای تغییر زبان فوری داخل SPA مناسب‌ترین انتخاب MVP نیست.
+[دلیل] طبق الگوی رسمی Angular برای custom pipe، تبدیل متن در template داخل pipe متمرکز می‌شود؛ pipe این پروژه impure است تا تغییر signal زبان بدون تغییر input هم UI را به‌روز کند.
+[الزام] کلیدهای ترجمه typed باشند و متن hard-coded جدید در componentها اضافه نشود.
+[الزام] زبان انتخابی در localStorage ذخیره شود.
+[الزام] direction صفحه از زبان فعال بیاید: fa => rtl، en => ltr.
+[الزام] language switcher مشترک به‌صورت dropdown پیاده‌سازی شود تا اضافه شدن زبان سوم فقط با افزودن locale option و JSON جدید انجام شود.
+[الزام] language switcher مشترک با SVG country flag استفاده شود، نه asset تصویری خارجی.
+[الزام] یک switcher در auth layout و یک switcher در dropdown پروفایل وجود داشته باشد.
+[الزام] CSSهای dashboard و auth از logical properties و `text-align: start` استفاده کنند تا RTL/LTR باعث overlap یا بریدگی dropdown نشود.
+```
+
+تصمیم پیاده‌سازی NestJS/API:
+
+```text
+[MVP] frontend در تمام درخواست‌های API header زیر را ارسال کند:
+  x-recallhub-locale: fa | en
+
+[بعدی] backend error/message catalog می‌تواند بر اساس همین header localized شود.
+[بعدی] در صورت نیاز، custom decorator مثل @Locale() طبق الگوی رسمی NestJS custom decorators اضافه شود.
+```
+
+منابع رسمی مبنا:
+
+```text
+Angular Internationalization: طراحی locale، ترجمه متن و format data
+Angular Signals/DI: state واکنشی سبک برای language service
+NestJS Custom Decorators / Headers: دریافت locale از request header در handlerها
+```
+
 ---
 
 ## 18. NestJS module structure

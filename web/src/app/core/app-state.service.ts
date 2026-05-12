@@ -69,7 +69,7 @@ export class AppStateService {
 
   selectProject(projectCode: string, projectId?: string) {
     this.persist(this.activeProjectCode, 'recallhub.activeProjectCode', projectCode.trim().toUpperCase());
-    if (projectId) this.persist(this.activeProjectId, 'recallhub.activeProjectId', projectId);
+    if (projectId !== undefined) this.persist(this.activeProjectId, 'recallhub.activeProjectId', projectId);
   }
 
   selectRepository(id: string) {

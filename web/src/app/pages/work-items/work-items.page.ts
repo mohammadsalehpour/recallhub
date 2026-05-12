@@ -3,7 +3,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService, messageFromError } from '../../core/api.service';
 import { AppStateService } from '../../core/app-state.service';
+import { I18nService } from '../../core/i18n.service';
 import { JsonRecord, WorkItem, compactRecord } from '../../core/models';
+import { LocalizePipe } from '../../shared/localize.pipe';
 
 type WorkAction = 'research' | 'spec' | 'approval' | 'implementationPlan' | 'executionSimulation' | 'memoryCommit';
 
@@ -18,14 +20,8 @@ const allowedStatusByAction: Record<WorkAction, string[]> = {
 
 @Component({
   selector: 'app-work-items-page',
-  imports: [CommonModule, ReactiveFormsModule, JsonPipe],
+  imports: [CommonModule, ReactiveFormsModule, JsonPipe, LocalizePipe],
   template: `
-    <section class="page-title">
-      <span class="eyebrow">P30 Work Items</span>
-      <h1>Development Cycle</h1>
-      <p>Actionها فقط بر اساس status واقعی backend فعال می‌شوند و transition نهایی در UI انجام نمی‌شود.</p>
-    </section>
-
     @if (notice()) {
       <p class="alert success mb-4">{{ notice() }}</p>
     }
@@ -36,26 +32,26 @@ const allowedStatusByAction: Record<WorkAction, string[]> = {
     <div class="grid gap-5 xl:grid-cols-[0.86fr_1.14fr]">
       <section class="glass-panel p-5">
         <div class="mb-4 flex items-center justify-between gap-3">
-          <h2 class="text-xl font-black">Create Work Item</h2>
-          <button class="btn icon-button" type="button" title="Refresh" (click)="load()">↻</button>
+          <h2 class="text-xl font-black">{{ 'workItems.create' | localize }}</h2>
+          <button class="btn icon-button" type="button" [attr.title]="'common.refresh' | localize" (click)="load()">↻</button>
         </div>
         <form class="grid gap-3" [formGroup]="createForm" (ngSubmit)="createWorkItem()">
-          <div class="field"><label for="title">Title</label><input id="title" formControlName="title" /></div>
-          <div class="field"><label for="request">Original Request</label><textarea id="request" formControlName="original_request"></textarea></div>
+          <div class="field"><label for="title">{{ 'common.title' | localize }}</label><input id="title" formControlName="title" /></div>
+          <div class="field"><label for="request">{{ 'workItems.originalRequest' | localize }}</label><textarea id="request" formControlName="original_request"></textarea></div>
           <div class="form-grid">
-            <div class="field"><label for="requestType">Request Type</label><select id="requestType" formControlName="request_type"><option value="feature">feature</option><option value="bugfix">bugfix</option><option value="research">research</option><option value="refactor">refactor</option><option value="ops">ops</option><option value="documentation">documentation</option></select></div>
-            <div class="field"><label for="riskLevel">Risk</label><select id="riskLevel" formControlName="risk_level"><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="critical">critical</option></select></div>
-            <div class="field"><label for="priority">Priority</label><select id="priority" formControlName="priority"><option value="low">low</option><option value="normal">normal</option><option value="high">high</option><option value="urgent">urgent</option></select></div>
+            <div class="field"><label for="requestType">{{ 'workItems.requestType' | localize }}</label><select id="requestType" formControlName="request_type"><option value="feature">{{ 'enum.feature' | localize }}</option><option value="bugfix">{{ 'enum.bugfix' | localize }}</option><option value="research">{{ 'enum.research' | localize }}</option><option value="refactor">{{ 'enum.refactor' | localize }}</option><option value="ops">{{ 'enum.ops' | localize }}</option><option value="documentation">{{ 'enum.documentation' | localize }}</option></select></div>
+            <div class="field"><label for="riskLevel">{{ 'common.risk' | localize }}</label><select id="riskLevel" formControlName="risk_level"><option value="low">{{ 'enum.low' | localize }}</option><option value="medium">{{ 'enum.medium' | localize }}</option><option value="high">{{ 'enum.high' | localize }}</option><option value="critical">{{ 'enum.critical' | localize }}</option></select></div>
+            <div class="field"><label for="priority">{{ 'common.priority' | localize }}</label><select id="priority" formControlName="priority"><option value="low">{{ 'enum.low' | localize }}</option><option value="normal">{{ 'enum.normal' | localize }}</option><option value="high">{{ 'enum.high' | localize }}</option><option value="urgent">{{ 'enum.urgent' | localize }}</option></select></div>
           </div>
-          <button class="btn primary w-fit" type="submit">Create</button>
+          <button class="btn primary w-fit" type="submit">{{ 'common.create' | localize }}</button>
         </form>
       </section>
 
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Work Items</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'workItems.title' | localize }}</h2>
         <div class="overflow-auto">
           <table class="data-table">
-            <thead><tr><th>Title</th><th>Status</th><th>Risk</th><th>Priority</th><th></th></tr></thead>
+            <thead><tr><th>{{ 'common.title' | localize }}</th><th>{{ 'common.status' | localize }}</th><th>{{ 'common.risk' | localize }}</th><th>{{ 'common.priority' | localize }}</th><th></th></tr></thead>
             <tbody>
               @for (item of workItems(); track item.id) {
                 <tr>
@@ -63,7 +59,7 @@ const allowedStatusByAction: Record<WorkAction, string[]> = {
                   <td><span class="pill" [class.warn]="item.status.includes('needs')" [class.good]="item.status === 'completed'">{{ item.status }}</span></td>
                   <td>{{ item.riskLevel || item.risk_level }}</td>
                   <td>{{ item.priority }}</td>
-                  <td><button class="btn icon-button" type="button" title="Select work item" (click)="selectWorkItem(item)">✓</button></td>
+                  <td><button class="btn icon-button" type="button" [attr.title]="'common.select' | localize" (click)="selectWorkItem(item)">✓</button></td>
                 </tr>
               }
             </tbody>
@@ -74,42 +70,42 @@ const allowedStatusByAction: Record<WorkAction, string[]> = {
 
     <section class="glass-panel mt-5 p-5">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-xl font-black">Pipeline Actions</h2>
+        <h2 class="text-xl font-black">{{ 'workItems.pipelineActions' | localize }}</h2>
         <span class="pill">{{ selectedStatus() || 'not selected' }}</span>
       </div>
       <div class="button-row">
-        <button class="btn" type="button" [disabled]="!can('research')" [title]="tooltip('research')" (click)="startAction('research/start', 'wi-research')">Start Research</button>
-        <button class="btn" type="button" [disabled]="!can('spec')" [title]="tooltip('spec')" (click)="startAction('spec/start', 'wi-spec')">Start Spec</button>
-        <button class="btn" type="button" [disabled]="!can('implementationPlan')" [title]="tooltip('implementationPlan')" (click)="startAction('create-implementation-plan', 'wi-implementation-plan')">Implementation Plan</button>
-        <button class="btn" type="button" [disabled]="!can('executionSimulation')" [title]="tooltip('executionSimulation')" (click)="startAction('simulate-execution', 'wi-execution-simulate')">Simulate Execution</button>
+        <button class="btn" type="button" [disabled]="!can('research')" [title]="tooltip('research')" (click)="startAction('research/start', 'wi-research')">{{ 'workItems.startResearch' | localize }}</button>
+        <button class="btn" type="button" [disabled]="!can('spec')" [title]="tooltip('spec')" (click)="startAction('spec/start', 'wi-spec')">{{ 'workItems.startSpec' | localize }}</button>
+        <button class="btn" type="button" [disabled]="!can('implementationPlan')" [title]="tooltip('implementationPlan')" (click)="startAction('create-implementation-plan', 'wi-implementation-plan')">{{ 'workItems.implementationPlan' | localize }}</button>
+        <button class="btn" type="button" [disabled]="!can('executionSimulation')" [title]="tooltip('executionSimulation')" (click)="startAction('simulate-execution', 'wi-execution-simulate')">{{ 'workItems.simulateExecution' | localize }}</button>
       </div>
     </section>
 
     <div class="mt-5 grid gap-5 xl:grid-cols-2">
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Human Approval</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'workItems.humanApproval' | localize }}</h2>
         <form class="grid gap-3" [formGroup]="approvalForm" (ngSubmit)="submitApproval()">
-          <div class="field"><label for="decision">Decision</label><select id="decision" formControlName="decision"><option value="approve">approve</option><option value="approve_with_waiver">approve_with_waiver</option><option value="reject">reject</option></select></div>
-          <div class="field"><label for="reason">Reason</label><textarea id="reason" formControlName="reason"></textarea></div>
-          <button class="btn primary w-fit" type="submit" [disabled]="!can('approval')" [title]="tooltip('approval')">Submit Approval</button>
+          <div class="field"><label for="decision">{{ 'workItems.decision' | localize }}</label><select id="decision" formControlName="decision"><option value="approve">{{ 'enum.approve' | localize }}</option><option value="approve_with_waiver">{{ 'enum.approveWithWaiver' | localize }}</option><option value="reject">{{ 'enum.reject' | localize }}</option></select></div>
+          <div class="field"><label for="reason">{{ 'workItems.reason' | localize }}</label><textarea id="reason" formControlName="reason"></textarea></div>
+          <button class="btn primary w-fit" type="submit" [disabled]="!can('approval')" [title]="tooltip('approval')">{{ 'workItems.submitApproval' | localize }}</button>
         </form>
       </section>
 
       <section class="glass-panel p-5">
-        <h2 class="mb-4 text-xl font-black">Memory Commit</h2>
+        <h2 class="mb-4 text-xl font-black">{{ 'workItems.memoryCommit' | localize }}</h2>
         <form class="grid gap-3" [formGroup]="commitForm" (ngSubmit)="submitMemoryCommit()">
-          <div class="field"><label for="commitTitle">Title</label><input id="commitTitle" formControlName="title" /></div>
-          <div class="field"><label for="whatChanged">What Changed</label><textarea id="whatChanged" formControlName="what_changed"></textarea></div>
-          <div class="field"><label for="whyChanged">Why Changed</label><textarea id="whyChanged" formControlName="why_changed"></textarea></div>
-          <div class="field"><label for="howChanged">How Changed</label><textarea id="howChanged" formControlName="how_changed"></textarea></div>
-          <div class="field"><label for="validationSummary">Validation Summary</label><input id="validationSummary" formControlName="validation_summary" /></div>
-          <button class="btn primary w-fit" type="submit" [disabled]="!can('memoryCommit')" [title]="tooltip('memoryCommit')">Complete Memory Commit</button>
+          <div class="field"><label for="commitTitle">{{ 'common.title' | localize }}</label><input id="commitTitle" formControlName="title" /></div>
+          <div class="field"><label for="whatChanged">{{ 'workItems.whatChanged' | localize }}</label><textarea id="whatChanged" formControlName="what_changed"></textarea></div>
+          <div class="field"><label for="whyChanged">{{ 'workItems.whyChanged' | localize }}</label><textarea id="whyChanged" formControlName="why_changed"></textarea></div>
+          <div class="field"><label for="howChanged">{{ 'workItems.howChanged' | localize }}</label><textarea id="howChanged" formControlName="how_changed"></textarea></div>
+          <div class="field"><label for="validationSummary">{{ 'workItems.validationSummary' | localize }}</label><input id="validationSummary" formControlName="validation_summary" /></div>
+          <button class="btn primary w-fit" type="submit" [disabled]="!can('memoryCommit')" [title]="tooltip('memoryCommit')">{{ 'workItems.completeMemoryCommit' | localize }}</button>
         </form>
       </section>
     </div>
 
     <section class="soft-panel mt-5 p-5">
-      <h2 class="mb-3 text-lg font-black">Context Packet</h2>
+      <h2 class="mb-3 text-lg font-black">{{ 'workItems.contextPacket' | localize }}</h2>
       <pre class="pressed-panel max-h-[34rem] overflow-auto p-4 text-xs">{{ contextPacket() | json }}</pre>
     </section>
   `,
@@ -118,6 +114,7 @@ const allowedStatusByAction: Record<WorkAction, string[]> = {
 export class WorkItemsPage {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly api = inject(ApiService);
+  private readonly i18n = inject(I18nService);
   protected readonly state = inject(AppStateService);
 
   protected readonly workItems = signal<WorkItem[]>([]);
@@ -152,7 +149,7 @@ export class WorkItemsPage {
   async load() {
     const code = this.state.activeProjectCode();
     if (!code) {
-      this.error.set('ابتدا پروژه فعال را انتخاب کنید.');
+      this.error.set(this.i18n._('workItems.selectProjectFirst'));
       return;
     }
     await this.capture(async () => {
@@ -164,7 +161,7 @@ export class WorkItemsPage {
   async createWorkItem() {
     const code = this.state.activeProjectCode();
     if (!code || this.createForm.invalid) {
-      this.error.set('پروژه فعال و title/original request/request type اجباری هستند.');
+      this.error.set(this.i18n._('workItems.required'));
       return;
     }
     await this.capture(async () => {
@@ -178,7 +175,7 @@ export class WorkItemsPage {
         }),
       );
       this.selectWorkItem(item);
-      this.notice.set('Work Item ثبت شد.');
+      this.notice.set(this.i18n._('workItems.created'));
       await this.load();
     });
   }
@@ -194,7 +191,10 @@ export class WorkItemsPage {
 
   tooltip(action: WorkAction) {
     if (this.can(action)) return '';
-    return `وضعیت فعلی ${this.selectedStatus() || 'unknown'} است. این action فقط در ${allowedStatusByAction[action].join(', ')} مجاز است.`;
+    return this.i18n.format('workItems.actionDisabled', {
+      status: this.selectedStatus() || 'unknown',
+      allowed: allowedStatusByAction[action].join(', '),
+    });
   }
 
   async startAction(endpoint: string, prefix: string) {
@@ -216,7 +216,11 @@ export class WorkItemsPage {
       );
       const runId = this.extractRunId(result);
       if (runId) this.state.selectRun(runId);
-      this.notice.set(runId ? `Workflow شروع شد: ${runId}` : 'Workflow action ثبت شد.');
+      this.notice.set(
+        runId
+          ? this.i18n.format('workItems.workflowStarted', { id: runId })
+          : this.i18n._('workItems.workflowActionCreated'),
+      );
       await this.load();
     });
   }
@@ -233,7 +237,7 @@ export class WorkItemsPage {
         }),
       );
       if (updated.status) this.state.selectWorkItem(id, updated.status);
-      this.notice.set('Human approval ثبت شد.');
+      this.notice.set(this.i18n._('workItems.approvalSubmitted'));
       await this.load();
     });
   }
@@ -258,7 +262,7 @@ export class WorkItemsPage {
           created_by: this.state.activeUserId() || undefined,
         }),
       );
-      this.notice.set('Memory commit ثبت شد.');
+      this.notice.set(this.i18n._('workItems.memoryCommitted'));
       await this.load();
     });
   }
@@ -271,7 +275,7 @@ export class WorkItemsPage {
 
   private requireWorkItem() {
     const id = this.state.activeWorkItemId();
-    if (!id) this.error.set('ابتدا Work Item را انتخاب کنید.');
+    if (!id) this.error.set(this.i18n._('workItems.selectWorkItemFirst'));
     return id;
   }
 
