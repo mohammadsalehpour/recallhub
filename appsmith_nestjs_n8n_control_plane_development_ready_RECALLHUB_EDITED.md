@@ -1,9 +1,9 @@
 # RecallHub — مستند توسعه آماده پیاده‌سازی
 
 **نام برنامه:** RecallHub  
-**نسخه سند:** 2.0 — بازنویسی امنیتی، منطقی و آماده پیاده‌سازی  
-**تاریخ بازبینی:** 2026-04-28  
-**Stack هدف:** Appsmith + NestJS + n8n + PostgreSQL + Redis  
+**نسخه سند:** 2.1 — جایگزینی کامل frontend با Angular و حذف کنترل‌پلین کم‌کد  
+**تاریخ بازبینی:** 2026-05-12  
+**Stack هدف:** Angular + Tailwind CSS + Nginx + NestJS + n8n + PostgreSQL + Redis  
 **اصل قطعی این نسخه:** n8n مالک داده نیست و نباید مستقیم در دیتابیس دامنه چیزی بنویسد. NestJS مالک persistence، validation، permission، audit و state machine است.
 
 ---
@@ -17,11 +17,12 @@ RecallHub یک «حافظه عملیاتی پروژه» و «کنترل‌پلی
 تصمیم اصلاحی این نسخه:
 
 ```text
-Appsmith = پنل کنترل و عملیات
+Angular  = پنل کنترل و عملیات، SPA رسمی RecallHub، مصرف‌کننده API
 NestJS   = API رسمی، امنیت، مالک دیتابیس، orchestrator و state machine
 n8n      = executor برای automation، LLM call، integration و تولید artifact
 Postgres = source of truth فقط از مسیر NestJS/Prisma
 Redis    = queue/cache/lock
+Nginx    = static web server برای build تولیدی Angular و fallback مسیرهای SPA
 ```
 
 در معماری نهایی، n8n خروجی structured artifact تولید می‌کند و آن را با callback امن به NestJS برمی‌گرداند. NestJS خروجی را validate می‌کند و فقط خودش در جدول‌های RecallHub می‌نویسد. اگر واقعاً هیچ روش بهتری وجود نداشت، n8n فقط اجازه نوشتن append-only در یک inbox/staging schema محدود را دارد، نه در جدول‌های اصلی دامنه.
@@ -97,7 +98,7 @@ RecallHub باید این سناریوها را پشتیبانی کند:
 7. promptها داخل workflow/code nodeها هستند و versioning دقیق ندارند.
 8. workflowهای طولانی synchronous هستند؛ timeout، retry و user experience را مشکل می‌کنند.
 9. final document با execution approval یکی نیست؛ باید human gate و state transition جدا داشته باشد.
-10. Appsmith نباید به n8n مستقیم وصل شود؛ تمام actionها باید از NestJS عبور کنند.
+10. Angular web UI نباید به n8n مستقیم وصل شود؛ تمام actionها باید از NestJS عبور کنند.
 
 ---
 
@@ -108,7 +109,7 @@ RecallHub باید این سناریوها را پشتیبانی کند:
 ```text
 NestJS/Prisma = مالک تمام جدول‌های دامنه RecallHub
 n8n           = تولیدکننده artifact، نه مالک persistence
-Appsmith      = مصرف‌کننده API، نه writer مستقیم DB
+Angular       = مصرف‌کننده API، نه writer مستقیم DB
 ```
 
 ### 3.2 قانون ممنوعیت write مستقیم n8n
@@ -166,8 +167,8 @@ recallhub_inbox.n8n_artifact_inbox
 
 ```text
                          +----------------------+
-                         |       Appsmith       |
-                         |  Control Dashboard   |
+                         |        Angular       |
+                         |  Web Control Plane   |
                          +----------+-----------+
                                     |
                                     | HTTPS REST / JWT / API Key
@@ -190,8 +191,8 @@ recallhub_inbox.n8n_artifact_inbox
 ### 4.1 جریان اجرای استاندارد
 
 ```text
-1. کاربر در Appsmith action را اجرا می‌کند.
-2. Appsmith فقط NestJS API را صدا می‌زند.
+1. کاربر در Angular web UI action را اجرا می‌کند.
+2. Angular فقط NestJS API را صدا می‌زند.
 3. NestJS auth, permission, validation, project state و idempotency را بررسی می‌کند.
 4. NestJS یک WorkflowRun می‌سازد.
 5. NestJS n8n را با payload signed صدا می‌زند.
@@ -199,13 +200,13 @@ recallhub_inbox.n8n_artifact_inbox
 7. n8n output structured را با callback signed به NestJS می‌فرستد.
 8. NestJS output را validate و normalize می‌کند.
 9. NestJS در دیتابیس می‌نویسد و audit/event ثبت می‌کند.
-10. Appsmith وضعیت را از NestJS می‌خواند.
+10. Angular وضعیت را از NestJS می‌خواند.
 ```
 
 ### 4.2 جریان project sync جدید
 
 ```text
-Appsmith -> NestJS /projects/:code/sync
+Angular -> NestJS /projects/:code/sync
 NestJS validates project repository/profile
 NestJS creates SyncRun
 NestJS triggers Scanner job
@@ -619,7 +620,7 @@ recallhub_workflow   workflow definition/run/event/artifact
 recallhub_audit      audit log و security event
 recallhub_inbox      فقط exception append-only برای artifact inbox، در صورت نیاز
 n8n                  دیتابیس داخلی n8n
-appsmith             دیتابیس داخلی Appsmith، جدا از domain
+web                  Angular/Nginx static frontend، بدون دیتابیس دامنه
 ```
 
 ### 9.2 جدول‌های core
@@ -1354,17 +1355,134 @@ workflow.cancel
 
 audit.read
 settings.write
+
+user.read
+user.manage
+role.read
+role.manage
 ```
 
 ### 15.3 Service-to-service security
 
 ```text
-Appsmith -> NestJS: JWT/API key with restricted scope
+Angular -> NestJS: JWT/API key with restricted scope
 NestJS -> n8n: internal network + signed payload
 n8n -> NestJS callback: HMAC signature
 Postgres: private network only
 Redis: private network only
 n8n UI: admin-only behind auth/IP restriction
+```
+
+### 15.3.1 تصمیم نهایی Auth و User Management
+
+در نسخه محصولی RecallHub، صفحه Login نباید محل وارد کردن `API Base URL`، انتخاب دستی `Role` یا تعیین دستی `Actor UUID` باشد. این صفحه در prototype فقط نقش `API access/dev settings` داشته است و برای MVP توسعه مفید بوده، اما برای کنترل‌پلین واقعی کافی نیست.
+
+تصمیم نهایی:
+
+```text
+Login UI = email یا username یا mobile + password + remember me
+Register UI = ساخت حساب کاربری اولیه یا دعوت‌شده
+Forgot Password UI = شروع جریان reset password
+Profile UI = مشاهده/ویرایش پروفایل، عکس پروفایل، تغییر password
+User Menu = نمایش نام و عکس کاربر + Profile + Logout
+User Management = مدیریت userها، وضعیت حساب و role assignment
+Role & Permission Management = مدیریت roleها و permissionهای دیتابیسی
+```
+
+قوانین معماری:
+
+```text
+[اجباری] role و permission از dropdown سمت frontend تعیین نمی‌شود.
+[اجباری] actor_id از token/backend context می‌آید، نه input آزاد کاربر.
+[اجباری] frontend فقط route guard کمکی دارد؛ authorization قطعی همیشه در NestJS انجام می‌شود.
+[اجباری] password فقط salted hash ذخیره می‌شود و هرگز plain text ذخیره یا برگردانده نمی‌شود.
+[اجباری] access token شامل subject، roleها و permissionها است.
+[اجباری] remember me فقط طول عمر session/token را تغییر می‌دهد، نه سطح دسترسی را.
+[اجباری] API key فقط برای dev/bootstrap/service-to-service مجاز است و login کاربر عادی نیست.
+[اجباری] SSO/Auth0/OIDC بعداً به عنوان provider قابل اتصال طراحی می‌شود، اما مدل داخلی user/role/permission منبع authorisation داخلی RecallHub باقی می‌ماند.
+```
+
+منابع رسمی که مبنای این تصمیم هستند:
+
+```text
+NestJS Authentication: sign-in endpoint، JWT bearer token، guard و public route pattern
+NestJS Authorization: RolesGuard با Reflector و اتصال نقش‌ها به request user
+Angular Routing Guards: guard فقط برای navigation UX است و نباید منبع نهایی authorization باشد
+Angular Reactive Forms: فرم‌های login/register/profile با model-driven forms ساخته شوند
+Auth0 RBAC: role مجموعه‌ای از permissionها است، permission assignment باید least privilege باشد
+Auth0 Token Best Practices: اعتبارسنجی JWT با library/middleware و توجه به algorithm/key rotation
+```
+
+### 15.3.2 صفحات و endpointهای Auth هدف
+
+Frontend:
+
+```text
+/login
+/register
+/forgot-password
+/profile
+/admin/users
+/admin/roles
+```
+
+Backend:
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/forgot-password
+GET  /api/v1/auth/me
+PATCH /api/v1/auth/profile
+POST /api/v1/auth/change-password
+
+GET  /api/v1/admin/users
+PATCH /api/v1/admin/users/:id
+POST /api/v1/admin/users/:id/roles
+DELETE /api/v1/admin/users/:id/roles/:roleId
+
+GET  /api/v1/admin/roles
+POST /api/v1/admin/roles
+PATCH /api/v1/admin/roles/:id
+GET  /api/v1/admin/permissions
+POST /api/v1/admin/roles/:id/permissions
+DELETE /api/v1/admin/roles/:id/permissions/:permissionId
+```
+
+### 15.3.3 مدل داده Auth هدف
+
+```text
+recallhub_core.rh_users
+recallhub_core.rh_roles
+recallhub_core.rh_permissions
+recallhub_core.rh_user_roles
+recallhub_core.rh_role_permissions
+recallhub_core.rh_password_reset_requests
+```
+
+فیلدهای اصلی user:
+
+```text
+id
+first_name
+last_name
+mobile
+username
+email
+password_hash
+avatar_url
+status active | invited | suspended | disabled
+last_login_at
+created_at
+updated_at
+```
+
+قانون migration:
+
+```text
+[اجباری] roleهای پایه و permissionهای پایه seed شوند.
+[اجباری] اولین user ثبت‌نام‌شده در محیط local/dev می‌تواند admin bootstrap شود.
+[اجباری] در production bootstrap admin باید با policy جدا یا invite انجام شود.
 ```
 
 ### 15.4 Database privilege matrix
@@ -1375,7 +1493,7 @@ n8n UI: admin-only behind auth/IP restriction
 | `migration_user` | ddl | ddl | ddl | ddl | ddl | ddl | none |
 | `n8n_user` | none | none | none | none | none | none by default | read/write فقط n8n internal |
 | `n8n_inbox_user` optional | none | none | none | none | none | insert-only | read/write n8n internal |
-| `appsmith_user` | none یا read-only views | none یا read-only views | none یا read-only views | none یا read-only views | none | none | none |
+| `web_client` | none | none | none | none | none | none | none |
 
 قانون acceptance:
 
@@ -1423,7 +1541,7 @@ Integration test باید ثابت کند n8n_user نمی‌تواند روی re
 
 ```text
 [حل قطعی] workflowهای LLM و scan به شکل async اجرا شوند.
-[حل قطعی] Appsmith polling روی WorkflowRun داشته باشد.
+[حل قطعی] Angular polling محدود/backoff روی WorkflowRun داشته باشد.
 [حل قطعی] reconciliation job runهای stuck را timed_out/callback_missing کند.
 ```
 
@@ -1445,35 +1563,51 @@ Integration test باید ثابت کند n8n_user نمی‌تواند روی re
 
 ---
 
-## 17. Appsmith plan
+## 17. Angular web control plane plan
 
-### 17.1 Datasource
+### 17.1 اصول frontend
 
 ```text
-Name: RecallHubAPI
-Base URL: https://api.example.com/api/v1
-Auth: Bearer Token یا API Key محدود
+Framework: Angular 21
+Styling: Tailwind CSS + CSS custom properties
+Runtime container: Nginx static server
+Base API URL: /api/v1 یا URL قابل تنظیم در UI برای توسعه local
+Auth: Bearer Token یا x-recallhub-api-key محدود
+State source of truth: NestJS API
+Local state: فقط UI/session preferences و active ids
 ```
 
-Appsmith مستقیم به n8n وصل نمی‌شود. Appsmith مستقیم به write database وصل نمی‌شود.
+Angular مستقیم به n8n وصل نمی‌شود. Angular مستقیم به دیتابیس وصل نمی‌شود. Angular هیچ state transition دامنه‌ای را locally mutate نمی‌کند؛ بعد از هر action باید read-back از NestJS انجام شود.
+
+مبنای رسمی Angular برای این بخش:
+
+```text
+- Angular deployment: production build با ng build و serve کردن output directory روی web server.
+- Angular routed SPA: server باید برای deep linkها fallback به index.html داشته باشد.
+- Angular HttpClient: provideHttpClient در app.config.ts و inject(HttpClient) در service.
+- Angular routing: routeها صفحه را در RouterOutlet render می‌کنند و lazy routeها bundle را split می‌کنند.
+- Angular signals: state محلی خواندنی/نوشتنی با signal/computed مدیریت می‌شود.
+```
+
+URLهای مرجع رسمی:
+
+```text
+https://angular.dev/tools/cli/deployment
+https://angular.dev/guide/http/setup
+https://angular.dev/guide/signals
+https://angular.dev/reference/migrations/route-lazy-loading
+```
 
 ### 17.2 صفحات MVP
 
 ```text
-Dashboard
-Projects
+Login / API access
 Project Setup Wizard
-Project Structure
 Project Memory
 Work Items
-Research & Specs
-Document Review
-Human Approval Queue
 Workflow Runs
-Artifacts
-Memory Commits
-Audit Logs
-Settings
+Stability Dashboard
+Audit Timeline
 ```
 
 ### 17.3 Project Setup Wizard
@@ -1488,6 +1622,15 @@ Stepها:
 5. Config files
 6. Sync policy
 7. Review and create
+```
+
+قانون‌ها:
+
+```text
+[اجباری] project_code، name، description، framework name و framework version در UI required باشند.
+[اجباری] حداقل یک tech stack item با source=declared وارد شود.
+[اجباری] repository_id برای path/config از repository انتخاب‌شده بیاید، نه مقدار حدسی.
+[اجباری] validate repository و sync فقط NestJS endpoint را صدا بزنند.
 ```
 
 ### 17.4 Work Item صفحه کار
@@ -1519,6 +1662,61 @@ Finalize Document
 Submit Human Approval
 Create Implementation Plan
 Complete Memory Commit
+```
+
+قانون‌ها:
+
+```text
+[اجباری] actionها با status فعلی backend فعال/غیرفعال شوند.
+[اجباری] اجرای lifecycle workflowهای work item از صفحه Workflow Runs ممنوع باشد و باید از endpointهای WorkItem انجام شود.
+[اجباری] Human Approval gate در UI قابل دور زدن نباشد.
+[اجباری] بعد از action، WorkItem list/context و WorkflowRunها دوباره fetch شوند.
+```
+
+### 17.5 Workflow Runs Monitor
+
+```text
+نمایش WorkflowDefinitionها و WorkflowRunها
+نمایش events برای run انتخاب‌شده
+Retry فقط برای failed/timed_out/callback_missing
+Cancel فقط برای pending/queued/running/retrying
+Polling محدود با backoff
+جلوگیری از اجرای دستی workflowهای lifecycle مربوط به WorkItem
+```
+
+### 17.6 Stability و Audit
+
+```text
+Stability Dashboard:
+  - خواندن /health/stability
+  - اجرای reconcile فقط برای roleهای admin/owner/ops
+  - confirm modal قبل از reconcile
+
+Audit Timeline:
+  - خواندن /audit/logs
+  - ترکیب audit log و workflow runs برای timeline read-only
+```
+
+### 17.7 Build و Docker
+
+```text
+Angular build:
+  npm run build
+
+Docker:
+  stage 1: node:24-alpine برای npm ci و ng build
+  stage 2: nginx:1.27-alpine برای serve کردن dist/web/browser
+
+Nginx:
+  try_files $uri $uri/ /index.html;
+```
+
+قانون deployment:
+
+```text
+[اجباری] routeهای Angular باید با refresh/deep link کار کنند.
+[اجباری] فایل‌های build شده static باشند؛ هیچ server-side domain write در web container وجود ندارد.
+[اجباری] API key/JWT در image bake نشود و فقط توسط کاربر/محیط runtime داده شود.
 ```
 
 ---
@@ -1632,7 +1830,7 @@ ALLOW_LEGACY_N8N_DOMAIN_WRITES=false
 
 ## 20. Docker Compose local اصلاح‌شده
 
-نکته اصلی: n8n به دیتابیس دامنه دسترسی ندارد. فقط API/worker به `recallhub_db` وصل می‌شود.
+نکته اصلی: n8n به دیتابیس دامنه دسترسی ندارد. فقط API/worker به `recallhub_db` وصل می‌شود. UI با سرویس `web` از build تولیدی Angular روی Nginx اجرا می‌شود.
 
 ```yaml
 services:
@@ -1642,11 +1840,14 @@ services:
       POSTGRES_USER: recallhub
       POSTGRES_PASSWORD: recallhub_password
       POSTGRES_DB: recallhub_db
+      N8N_DB_USER: n8n
+      N8N_DB_PASSWORD: n8n_password
+      N8N_DB_NAME: n8n_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init:/docker-entrypoint-initdb.d
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5432:5432"
+      - "15432:5432"
 
   redis:
     image: redis:7
@@ -1654,17 +1855,23 @@ services:
       - "6379:6379"
 
   api:
-    build: ../api
+    build:
+      context: ../api
     depends_on:
       - postgres
       - redis
     environment:
       NODE_ENV: development
+      PORT: 3000
       DATABASE_URL: postgresql://recallhub:recallhub_password@postgres:5432/recallhub_db
       REDIS_URL: redis://redis:6379
-      N8N_INTERNAL_BASE_URL: http://n8n:5678
-      N8N_CALLBACK_SECRET: change_me
-      APP_JWT_SECRET: change_me
+      N8N_INTERNAL_BASE_URL: http://n8n:5678/webhook
+      N8N_CALLBACK_URL: http://api:3000/api/v1/integrations/n8n/callback
+      N8N_TRIGGER_SECRET: change_me_trigger_secret
+      N8N_CALLBACK_SECRET: change_me_callback_secret
+      APP_JWT_SECRET: change_me_jwt_secret
+      APP_API_KEY: change_me_app_api_key
+      APP_API_KEY_ROLES: admin,ops,user
       ALLOWED_REPO_ROOTS: /workspace/repos
     volumes:
       - ../repos:/workspace/repos:ro
@@ -1672,7 +1879,7 @@ services:
       - "3000:3000"
 
   n8n:
-    image: n8nio/n8n:stable
+    image: docker.n8n.io/n8nio/n8n:latest
     depends_on:
       - postgres
       - redis
@@ -1688,23 +1895,28 @@ services:
       N8N_PORT: 5678
       N8N_PROTOCOL: http
       WEBHOOK_URL: http://localhost:5678/
-      GENERIC_TIMEZONE: Europe/Istanbul
+      N8N_CALLBACK_URL: http://api:3000/api/v1/integrations/n8n/callback
+      N8N_CALLBACK_SECRET: change_me_callback_secret
+      N8N_TRIGGER_SECRET: change_me_trigger_secret
+      N8N_LLM_MODE: contract_stub
+      GENERIC_TIMEZONE: Asia/Tehran
     volumes:
       - n8n_data:/home/node/.n8n
+      - ../n8n/workflows/stubs:/workflows/stubs:ro
     ports:
       - "5678:5678"
 
-  appsmith:
-    image: appsmith/appsmith-ce:latest
+  web:
+    build:
+      context: ../web
+    depends_on:
+      - api
     ports:
-      - "8080:80"
-    volumes:
-      - appsmith_stacks:/appsmith-stacks
+      - "4200:80"
 
 volumes:
   postgres_data:
   n8n_data:
-  appsmith_stacks:
 ```
 
 `postgres/init` باید user/database جدا بسازد:
@@ -1725,7 +1937,7 @@ GRANT ALL PRIVILEGES ON DATABASE n8n_db TO n8n;
 
 ```text
 [ ] n8n webhookها public نباشند.
-[ ] Appsmith فقط به NestJS وصل شود.
+[ ] Angular فقط به NestJS وصل شود.
 [ ] n8n DB credential دامنه از environment production حذف شود.
 [ ] repoRoot arbitrary در API رد شود.
 [ ] hard-coded localhost در WF0 از مسیر production حذف شود.
@@ -1737,7 +1949,7 @@ GRANT ALL PRIVILEGES ON DATABASE n8n_db TO n8n;
 [ ] schemaهای recallhub_* با Prisma ساخته شود.
 [ ] project/profile/tech-stack/repository/path API پیاده شود.
 [ ] audit log و workflow run پیاده شود.
-[ ] project setup wizard در Appsmith ساخته شود.
+[ ] project setup wizard در Angular ساخته شود.
 ```
 
 ### Phase 2 — Artifact contract
@@ -1806,7 +2018,7 @@ GRANT ALL PRIVILEGES ON DATABASE n8n_db TO n8n;
 | state machine پراکنده | High | WorkItemStateMachine و WorkflowRunStateMachine در NestJS |
 | final doc به‌جای approval | High | human approval مستقل و mandatory |
 | duplicate/retry corruption | Medium/High | idempotency key و callback replay protection |
-| Appsmith business logic | Medium | Appsmith فقط UI/API consumer |
+| frontend business logic | Medium | Angular فقط UI/API consumer و backend source of truth |
 | n8n credential leakage | High | credential store، no domain DB credential، secret manager |
 | large DB artifacts | Medium | object storage برای artifact بزرگ |
 
@@ -1823,7 +2035,7 @@ MVP زمانی قابل قبول است که:
 [ ] repoRoot فقط از allowlist پذیرفته شود.
 [ ] sync پروژه moduleها/files/chunks را بسازد.
 [ ] n8n_user هیچ write privilege روی recallhub_* نداشته باشد.
-[ ] Appsmith هیچ n8n webhook را مستقیم صدا نزند.
+[ ] Angular هیچ n8n webhook را مستقیم صدا نزند.
 [ ] همه actionها WorkflowRun و AuditLog بسازند.
 [ ] کاربر بتواند WorkItem بسازد و آن را analyze کند.
 [ ] research-first flow حداقل برای تولید ResearchFindingsArtifact وجود داشته باشد.
@@ -1831,7 +2043,7 @@ MVP زمانی قابل قبول است که:
 [ ] FinalDocument بدون HumanApproval قابل implementation نباشد.
 [ ] MemoryCommit بعد از تکمیل کار ثبت شود.
 [ ] WF4 یا معادل آن فقط به نام Execution Simulation نمایش داده شود.
-[ ] خطاهای n8n در WorkflowRun ذخیره و در Appsmith دیده شوند.
+[ ] خطاهای n8n در WorkflowRun ذخیره و در Angular دیده شوند.
 [ ] callback n8n با HMAC validate شود.
 [ ] runهای stuck با reconciliation job مشخص شوند.
 ```
@@ -1847,6 +2059,9 @@ MVP زمانی قابل قبول است که:
 [ ] ConfigModule + env validation
 [ ] Prisma schema for recallhub_* schemas
 [ ] Auth + RBAC + permission guard
+[ ] User registration/login/profile/password reset
+[ ] User Management APIs
+[ ] Role & Permission Management APIs
 [ ] Project CRUD
 [ ] Tech stack CRUD + detected approval
 [ ] Repository binding + path resolver
@@ -1879,23 +2094,26 @@ MVP زمانی قابل قبول است که:
 [ ] Isolate legacy workflows in dev-only namespace
 ```
 
-### Appsmith
+### Angular Web
 
 ```text
-[ ] RecallHubAPI datasource
-[ ] Dashboard
+[ ] Angular workspace under web/
+[ ] provideHttpClient در app.config.ts
+[ ] lazy routes برای صفحه‌های control plane
+[ ] App shell با navigation و active context
+[ ] Login/API access page
 [ ] Project Setup Wizard
-[ ] Project Profile page
-[ ] Project Structure page
 [ ] Project Memory page
-[ ] Work Items page
-[ ] Research & Specs page
-[ ] Document Review page
-[ ] Human Approval Queue
-[ ] Workflow Runs page
-[ ] Artifacts page
-[ ] Memory Commits page
-[ ] Audit Logs page
+[ ] Work Items page با status-aware action gating
+[ ] Workflow Runs page با polling/retry/cancel
+[ ] Stability Dashboard با role gate و confirm modal
+[ ] Audit Timeline read-only
+[ ] Register/Forgot Password/Profile pages
+[ ] User menu with profile/logout
+[ ] User Management page
+[ ] Role & Permission Management page
+[ ] Dockerfile multi-stage با nginx
+[ ] Nginx SPA fallback برای route refresh/deep link
 ```
 
 ### DevOps
@@ -1918,12 +2136,15 @@ MVP زمانی قابل قبول است که:
 
 ```bash
 cp .env.example .env
-docker compose -f infra/docker-compose.yml up -d
+cp api/.env.example api/.env
+docker compose -f infra/docker-compose.yml up -d postgres redis
 cd api
 npm install
-npx prisma migrate dev
-npx prisma db seed
-npm run start:dev
+npm run prisma:generate
+npm run db:apply:local
+cd ..
+docker compose -f infra/docker-compose.yml up -d --build api web n8n
+bash n8n/scripts/import-and-publish-stubs.sh
 ```
 
 تست create project:
@@ -1975,13 +2196,21 @@ POST /api/v1/projects/VODOO/sync
 Idempotency-Key: sync-vodoo-001
 ```
 
+اجرای UI:
+
+```http
+GET http://localhost:4200
+```
+
+برای API key mode، مقدار `APP_API_KEY` از `.env` در صفحه Login وارد شود.
+
 ---
 
 ## 26. تصمیم‌های نهایی این نسخه
 
 ```text
 Product name: RecallHub
-Frontend/Admin: Appsmith
+Frontend/Admin: Angular 21 + Tailwind CSS served by Nginx
 Backend/API/Domain: NestJS
 ORM/Migration: Prisma
 Database: PostgreSQL
@@ -2015,3 +2244,99 @@ RecallHub باید از prototype فعلی n8n-heavy به یک سیستم قاب
 ```
 
 با این نسخه، سند از حالت معماری عمومی به نقشه اجرایی روشن برای ساخت RecallHub تبدیل شده است.
+
+---
+
+## 28. وضعیت پیاده‌سازی فعلی نسبت به این سند
+
+این بخش بر اساس فایل‌های موجود در repository در تاریخ 2026-05-12 نوشته شده است و حدس یا فرض بیرون از کد ندارد.
+
+### 28.1 پیاده‌سازی‌شده
+
+```text
+[x] Angular workspace در web/
+[x] Angular 21 application با standalone/lazy route style
+[x] provideHttpClient در app.config.ts
+[x] صفحه Login/API access
+[x] صفحه Project Setup Wizard
+[x] صفحه Project Memory
+[x] صفحه Work Items با status-aware action gating
+[x] صفحه Workflow Runs با retry/cancel/poll
+[x] صفحه Stability Dashboard با role gate و confirm modal
+[x] صفحه Audit Timeline read-only
+[x] Dockerfile چندمرحله‌ای برای Angular build و Nginx serve
+[x] Nginx fallback به index.html برای routeهای SPA
+[x] حذف سرویس frontend قبلی از docker-compose
+[x] سرویس web در docker-compose روی port 4200
+```
+
+Backend موجود:
+
+```text
+[x] NestJS API پایه
+[x] Auth guard با Bearer/API key
+[x] Permission/Role guard
+[x] Project CRUD و project configuration endpoints
+[x] Repository validation/path resolver
+[x] Project sync داخلی
+[x] Memory modules/files/chunks/events/commits read endpoints
+[x] WorkItem lifecycle endpoints
+[x] WorkflowDefinition/WorkflowRun/WorkflowEvent endpoints
+[x] n8n signed trigger client
+[x] n8n signed callback controller/guard
+[x] Artifact schema validator
+[x] Audit service/controller
+[x] Stability health و reconcile stale workflow runs
+[x] Migration برای محدود کردن privilegeهای n8n
+[x] test:n8n-privileges script
+```
+
+n8n موجود:
+
+```text
+[x] artifact-only stub workflows
+[x] callback envelope/schema contract
+[x] import script برای workflowهای stub
+[x] contract_stub mode برای اجرای local بدون provider واقعی LLM
+```
+
+### 28.2 پیاده‌سازی partial
+
+```text
+[~] UI همه actionهای اصلی را دارد، اما صفحه جداگانه برای Research & Specs، Document Review Queue و Artifacts هنوز مستقل نشده است.
+[~] Work Items UI context packet را نشان می‌دهد، اما artifact list endpoint را هنوز به یک viewer اختصاصی وصل نکرده است.
+[~] Human approval در Work Items وجود دارد، اما queue عملیاتی جدا برای چند WorkItem ندارد.
+[~] Workflow polling در Angular وجود دارد، اما backoff/timeout policy هنوز ساده است.
+[~] API auth با API key/JWT پایه وجود دارد، اما user management کامل و role persistence در دیتابیس هنوز در سند و کد به شکل کامل نهایی نشده است.
+[~] Project sync داخلی وجود دارد، اما Redis/advisory lock برای concurrency طبق سند هنوز باید دقیق‌تر بررسی/تکمیل شود.
+[~] Object storage برای artifactهای بزرگ هنوز پیاده‌سازی نشده و MVP فعلاً Postgres را نگه می‌دارد.
+```
+
+### 28.3 هنوز پیاده‌سازی نشده یا نیازمند تصمیم بعدی
+
+```text
+[ ] صفحه/flow مستقل برای Research & Specs
+[ ] صفحه/flow مستقل برای Document Review
+[ ] Human Approval Queue برای چند work item
+[ ] Artifacts viewer با markdown/json rendering امن
+[ ] Settings page برای API base URL/roles/policies در سطح سازمانی
+[ ] تست‌های frontend برای status-aware gating
+[ ] AXE/accessibility test خودکار برای Angular UI
+[ ] reverse proxy production برای مسیرهای / و /api
+[ ] HTTPS و secret management production
+[ ] object storage برای artifactهای بزرگ
+[ ] continuous metrics/observability کامل
+[ ] backup/restore scripts
+```
+
+### 28.4 جمع‌بندی وضعیت
+
+```text
+Frontend/Angular: حدود 70% از MVP کنترل‌پلین عملیاتی پیاده شده است.
+Backend/NestJS: حدود 75% از MVP دامنه و orchestration پیاده شده است.
+n8n artifact path: حدود 65% برای stub/local contract test آماده است.
+DevOps local: حدود 70% آماده است؛ production hardening هنوز باقی است.
+کل MVP نسبت به این سند: حدود 70% پیاده‌سازی شده است.
+```
+
+این درصدها تخمینی اما مبتنی بر فایل‌های واقعی همین repository هستند؛ معیار دقیق‌تر باید بعد از تعریف test matrix و acceptance testهای executable محاسبه شود.

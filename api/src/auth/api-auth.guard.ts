@@ -5,12 +5,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { JwtService } from '@nestjs/jwt';
+import { timingSafeEqual } from 'node:crypto';
 import { Request } from 'express';
 
 export type RecallHubAuth = {
   subject: string;
   roles: string[];
+  permissions: string[];
   authType: 'api_key' | 'jwt';
 };
 
@@ -20,7 +22,10 @@ type AuthenticatedRequest = Request & {
 
 @Injectable()
 export class ApiAuthGuard implements CanActivate {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
@@ -39,6 +44,7 @@ export class ApiAuthGuard implements CanActivate {
           .split(',')
           .map((role) => role.trim())
           .filter(Boolean),
+        permissions: [],
         authType: 'api_key',
       };
       return true;
@@ -65,57 +71,15 @@ export class ApiAuthGuard implements CanActivate {
   }
 
   private verifyJwt(token: string): RecallHubAuth | undefined {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      return undefined;
-    }
-
-    const [encodedHeader, encodedPayload, signature] = parts;
-
-    let header: { alg?: string; typ?: string };
     try {
-      header = JSON.parse(
-        Buffer.from(encodedHeader, 'base64url').toString('utf8'),
-      ) as { alg?: string; typ?: string };
-    } catch {
-      return undefined;
-    }
-
-    if (header.alg !== 'HS256') {
-      return undefined;
-    }
-
-    const expected = this.base64UrlEncode(
-      createHmac(
-        'sha256',
-        this.configService.getOrThrow<string>('APP_JWT_SECRET'),
-      )
-        .update(`${encodedHeader}.${encodedPayload}`)
-        .digest(),
-    );
-
-    if (!this.safeEqual(signature, expected)) {
-      return undefined;
-    }
-
-    try {
-      const payload = JSON.parse(
-        Buffer.from(encodedPayload, 'base64url').toString('utf8'),
-      ) as {
+      const payload = this.jwtService.verify<{
         sub?: string;
         role?: string;
         roles?: string[];
-        exp?: number;
-        nbf?: number;
-      };
-
-      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-        return undefined;
-      }
-
-      if (payload.nbf && payload.nbf > Math.floor(Date.now() / 1000)) {
-        return undefined;
-      }
+        permissions?: string[];
+      }>(token, {
+        secret: this.configService.getOrThrow<string>('APP_JWT_SECRET'),
+      });
 
       const roles = Array.isArray(payload.roles)
         ? payload.roles
@@ -126,15 +90,16 @@ export class ApiAuthGuard implements CanActivate {
       return {
         subject: payload.sub ?? 'jwt-user',
         roles: roles.filter((role) => typeof role === 'string' && role.trim()),
+        permissions: Array.isArray(payload.permissions)
+          ? payload.permissions.filter(
+              (permission) => typeof permission === 'string' && permission.trim(),
+            )
+          : [],
         authType: 'jwt',
       };
     } catch {
       return undefined;
     }
-  }
-
-  private base64UrlEncode(buffer: Buffer): string {
-    return buffer.toString('base64url');
   }
 
   private safeEqual(actual: string, expected: string): boolean {

@@ -1,7 +1,17 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { Role } from './models';
+import { AuthResponse, CurrentUser, Role } from './models';
 
 const storage = globalThis.localStorage;
+const currentUser = storage?.getItem('recallhub.currentUser');
+
+function parseCurrentUser(value: string | null | undefined): CurrentUser | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as CurrentUser;
+  } catch {
+    return null;
+  }
+}
 
 @Injectable({ providedIn: 'root' })
 export class AppStateService {
@@ -9,28 +19,44 @@ export class AppStateService {
   readonly apiBaseUrl = signal(
     storage?.getItem('recallhub.apiBaseUrl') ?? 'http://localhost:3000/api/v1',
   );
+  readonly currentUser = signal<CurrentUser | null>(parseCurrentUser(currentUser));
   readonly activeProjectCode = signal(storage?.getItem('recallhub.activeProjectCode') ?? '');
   readonly activeProjectId = signal(storage?.getItem('recallhub.activeProjectId') ?? '');
   readonly activeRepositoryId = signal(storage?.getItem('recallhub.activeRepositoryId') ?? '');
   readonly activeWorkItemId = signal(storage?.getItem('recallhub.activeWorkItemId') ?? '');
   readonly activeWorkItemStatus = signal(storage?.getItem('recallhub.activeWorkItemStatus') ?? '');
   readonly activeRunId = signal(storage?.getItem('recallhub.activeRunId') ?? '');
-  readonly activeUserId = signal(storage?.getItem('recallhub.activeUserId') ?? '');
-  readonly activeRole = signal<Role>((storage?.getItem('recallhub.activeRole') as Role) ?? 'developer');
+  readonly activeUserId = computed(() => this.currentUser()?.id ?? '');
+  readonly activeRole = computed<Role>(() => {
+    const role = this.currentUser()?.roles[0]?.code;
+    return (role as Role | undefined) ?? 'viewer';
+  });
 
   readonly isAuthenticated = computed(() => this.token().trim().length > 0);
-  readonly isAdmin = computed(() => ['admin', 'owner', 'ops'].includes(this.activeRole()));
+  readonly isAdmin = computed(
+    () =>
+      ['admin', 'owner'].includes(this.activeRole()) ||
+      this.hasPermission('user.manage') ||
+      this.hasPermission('role.manage') ||
+      this.hasPermission('settings.write'),
+  );
 
-  saveAuth(input: {
-    token: string;
-    apiBaseUrl: string;
-    role: Role;
-    activeUserId?: string;
-  }) {
-    this.setToken(input.token);
-    this.setApiBaseUrl(input.apiBaseUrl);
-    this.setRole(input.role);
-    this.setActiveUserId(input.activeUserId ?? '');
+  saveSession(response: AuthResponse) {
+    this.setToken(response.access_token);
+    this.currentUser.set(response.user);
+    storage?.setItem('recallhub.currentUser', JSON.stringify(response.user));
+  }
+
+  refreshUser(user: CurrentUser) {
+    this.currentUser.set(user);
+    storage?.setItem('recallhub.currentUser', JSON.stringify(user));
+  }
+
+  hasPermission(permission: string) {
+    return (
+      this.currentUser()?.permissions.some((item) => item.code === permission) ??
+      false
+    );
   }
 
   setToken(value: string) {
@@ -39,14 +65,6 @@ export class AppStateService {
 
   setApiBaseUrl(value: string) {
     this.persist(this.apiBaseUrl, 'recallhub.apiBaseUrl', value.trim().replace(/\/+$/, ''));
-  }
-
-  setRole(value: Role) {
-    this.persist(this.activeRole, 'recallhub.activeRole', value);
-  }
-
-  setActiveUserId(value: string) {
-    this.persist(this.activeUserId, 'recallhub.activeUserId', value.trim());
   }
 
   selectProject(projectCode: string, projectId?: string) {
@@ -80,8 +98,10 @@ export class AppStateService {
       'activeWorkItemId',
       'activeWorkItemStatus',
       'activeRunId',
+      'currentUser',
     ].forEach((key) => storage?.removeItem(`recallhub.${key}`));
     this.token.set('');
+    this.currentUser.set(null);
     this.activeProjectCode.set('');
     this.activeProjectId.set('');
     this.activeRepositoryId.set('');

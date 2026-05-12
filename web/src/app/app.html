@@ -1,49 +1,86 @@
-<main class="bg-app text-slate-900">
-  <div class="app-frame">
-    <aside class="app-sidebar">
-      <a class="brand-lockup" routerLink="/project-setup" aria-label="RecallHub home">
-        <span class="brand-mark">RH</span>
-        <span>
-          <strong>RecallHub</strong>
-          <small>Control Plane</small>
-        </span>
-      </a>
+@if (isAuthRoute()) {
+  <main class="auth-shell text-slate-900">
+    <router-outlet />
+  </main>
+} @else {
+  <main class="bg-app text-slate-900">
+    <div class="app-frame">
+      <aside class="app-sidebar">
+        <a class="brand-lockup" routerLink="/project-setup" aria-label="RecallHub home">
+          <span class="brand-mark">RH</span>
+          <span>
+            <strong>RecallHub</strong>
+            <small>Control Plane</small>
+          </span>
+        </a>
 
-      <nav aria-label="Main navigation" class="app-nav">
-        @for (page of visiblePages(); track page.path) {
-          <a
-            class="nav-item"
-            routerLinkActive="active"
-            [routerLink]="page.path"
-            [attr.aria-label]="page.label"
-          >
-            <span class="nav-icon" aria-hidden="true">{{ page.icon }}</span>
-            <span>{{ page.label }}</span>
-          </a>
+        <nav aria-label="Main navigation" class="app-nav">
+          @for (page of visiblePages(); track page.path) {
+            <a
+              class="nav-item"
+              routerLinkActive="active"
+              [routerLink]="page.path"
+              [attr.aria-label]="page.label"
+            >
+              <span class="nav-icon" aria-hidden="true">{{ page.icon }}</span>
+              <span>{{ page.label }}</span>
+            </a>
+          }
+        </nav>
+
+        <section class="status-card" aria-label="Active context">
+          <span class="eyebrow">Active Context</span>
+          <dl>
+            <div>
+              <dt>Project</dt>
+              <dd>{{ state.activeProjectCode() || 'not selected' }}</dd>
+            </div>
+            <div>
+              <dt>Work item</dt>
+              <dd>{{ state.activeWorkItemId() || 'not selected' }}</dd>
+            </div>
+            <div>
+              <dt>Role</dt>
+              <dd>{{ state.activeRole() }}</dd>
+            </div>
+          </dl>
+        </section>
+      </aside>
+
+      <section class="content-shell">
+        @if (state.isAuthenticated()) {
+          <header class="topbar">
+            <div>
+              <span class="eyebrow">Signed in</span>
+              <strong>{{ state.currentUser()?.full_name || state.currentUser()?.username }}</strong>
+            </div>
+            <div class="user-menu">
+              <button
+                class="user-menu-button"
+                type="button"
+                aria-haspopup="menu"
+                [attr.aria-expanded]="userMenuOpen()"
+                (click)="userMenuOpen.set(!userMenuOpen())"
+              >
+                @if (state.currentUser()?.avatar_url) {
+                  <img [src]="state.currentUser()?.avatar_url" alt="" />
+                } @else {
+                  <span>{{ userInitials() }}</span>
+                }
+                <span>{{ state.currentUser()?.username }}</span>
+              </button>
+
+              @if (userMenuOpen()) {
+                <div class="user-menu-panel" role="menu">
+                  <a routerLink="/profile" role="menuitem" (click)="userMenuOpen.set(false)">مشاهده پروفایل</a>
+                  <button type="button" role="menuitem" (click)="logout()">خروج از سیستم</button>
+                </div>
+              }
+            </div>
+          </header>
         }
-      </nav>
-
-      <section class="status-card" aria-label="Active context">
-        <span class="eyebrow">Active Context</span>
-        <dl>
-          <div>
-            <dt>Project</dt>
-            <dd>{{ state.activeProjectCode() || 'not selected' }}</dd>
-          </div>
-          <div>
-            <dt>Work item</dt>
-            <dd>{{ state.activeWorkItemId() || 'not selected' }}</dd>
-          </div>
-          <div>
-            <dt>Role</dt>
-            <dd>{{ state.activeRole() }}</dd>
-          </div>
-        </dl>
+        <router-outlet />
       </section>
-    </aside>
-
-    <section class="content-shell">
-      <router-outlet />
-    </section>
-  </div>
-</main>
+    </div>
+  </main>
+}

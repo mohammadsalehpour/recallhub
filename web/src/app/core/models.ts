@@ -13,7 +13,58 @@ export type ApiEnvelope<T> = {
   data: T;
 };
 
-export type Role = 'admin' | 'owner' | 'ops' | 'developer' | 'viewer';
+export type Role =
+  | 'admin'
+  | 'owner'
+  | 'project_owner'
+  | 'architect'
+  | 'developer'
+  | 'reviewer'
+  | 'operator'
+  | 'ops'
+  | 'viewer';
+
+export type Permission = {
+  id: string;
+  code: string;
+  description?: string | null;
+};
+
+export type UserRole = {
+  id: string;
+  code: Role | string;
+  name: string;
+  description?: string | null;
+};
+
+export type CurrentUser = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  mobile: string;
+  username: string;
+  email: string;
+  avatar_url?: string | null;
+  status: string;
+  roles: UserRole[];
+  permissions: Permission[];
+  created_at?: string;
+  updated_at?: string;
+  last_login_at?: string | null;
+};
+
+export type AuthResponse = {
+  access_token: string;
+  token_type: 'Bearer';
+  expires_in: number;
+  user: CurrentUser;
+};
+
+export type ManagedRole = UserRole & {
+  system: boolean;
+  permissions: Permission[];
+};
 
 export type Project = {
   id: string;

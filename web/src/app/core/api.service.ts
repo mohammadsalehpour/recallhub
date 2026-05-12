@@ -3,9 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
   ApiEnvelope,
+  AuthResponse,
   AuditLog,
   ConfigFile,
+  CurrentUser,
   JsonRecord,
+  ManagedRole,
+  Permission,
   Project,
   ProjectPath,
   Repository,
@@ -27,6 +31,86 @@ export class ApiService {
 
   health() {
     return this.request<{ name: string; status: string; timestamp: string }>('GET', '');
+  }
+
+  register(body: JsonRecord) {
+    return this.request<AuthResponse>('POST', '/auth/register', body, {}, false);
+  }
+
+  login(body: JsonRecord) {
+    return this.request<AuthResponse>('POST', '/auth/login', body, {}, false);
+  }
+
+  forgotPassword(body: JsonRecord) {
+    return this.request<{ requested: boolean; message: string }>(
+      'POST',
+      '/auth/forgot-password',
+      body,
+      {},
+      false,
+    );
+  }
+
+  me() {
+    return this.request<CurrentUser>('GET', '/auth/me');
+  }
+
+  updateProfile(body: JsonRecord) {
+    return this.request<CurrentUser>('PATCH', '/auth/profile', body);
+  }
+
+  changePassword(body: JsonRecord) {
+    return this.request<{ changed: boolean }>('POST', '/auth/change-password', body);
+  }
+
+  users() {
+    return this.request<CurrentUser[]>('GET', '/admin/users');
+  }
+
+  updateUser(userId: string, body: JsonRecord) {
+    return this.request<CurrentUser>('PATCH', `/admin/users/${userId}`, body);
+  }
+
+  assignUserRole(userId: string, roleId: string) {
+    return this.request<CurrentUser>('POST', `/admin/users/${userId}/roles`, {
+      role_id: roleId,
+    });
+  }
+
+  removeUserRole(userId: string, roleId: string) {
+    return this.request<CurrentUser>(
+      'DELETE',
+      `/admin/users/${userId}/roles/${roleId}`,
+    );
+  }
+
+  roles() {
+    return this.request<ManagedRole[]>('GET', '/admin/roles');
+  }
+
+  createRole(body: JsonRecord) {
+    return this.request<ManagedRole>('POST', '/admin/roles', body);
+  }
+
+  updateRole(roleId: string, body: JsonRecord) {
+    return this.request<ManagedRole>('PATCH', `/admin/roles/${roleId}`, body);
+  }
+
+  permissions() {
+    return this.request<Permission[]>('GET', '/admin/permissions');
+  }
+
+  assignRolePermission(roleId: string, permissionId: string) {
+    return this.request<ManagedRole>('POST', `/admin/roles/${roleId}/permissions`, {
+      permission_id: permissionId,
+    });
+  }
+
+  removeRolePermission(roleId: string, permissionId: string) {
+    return this.request<ManagedRole>(
+      'DELETE',
+      `/admin/roles/${roleId}/permissions/${permissionId}`,
+    );
   }
 
   projects() {
@@ -174,11 +258,12 @@ export class ApiService {
     path: string,
     body?: unknown,
     extraHeaders: Record<string, string> = {},
+    authenticate = true,
   ): Promise<T> {
     const token = this.state.token();
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}`, 'x-recallhub-api-key': token } : {}),
+      ...(authenticate && token ? { Authorization: `Bearer ${token}` } : {}),
       ...extraHeaders,
     });
 

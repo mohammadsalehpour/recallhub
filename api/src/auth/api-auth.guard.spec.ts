@@ -1,4 +1,5 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { createHmac } from 'node:crypto';
 import { ApiAuthGuard } from './api-auth.guard';
 
@@ -38,7 +39,7 @@ describe('ApiAuthGuard JWT policy', () => {
       throw new Error(`Unexpected key ${key}`);
     },
     get: () => 'admin',
-  } as never);
+  } as never, new JwtService());
 
   it('accepts a valid HS256 token', () => {
     const token = signJwt(
