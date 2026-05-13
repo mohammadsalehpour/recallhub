@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService, messageFromError } from '../../core/api.service';
 import { AppStateService } from '../../core/app-state.service';
@@ -10,8 +10,11 @@ import {
   ProjectPath,
   Repository,
   TechStackItem,
+  TechnologyCatalogItem,
   compactRecord,
   projectCodeOf,
+  technologyLatestVersionOf,
+  technologyNameOf,
 } from '../../core/models';
 import { LocalizePipe } from '../../shared/localize.pipe';
 
@@ -53,11 +56,27 @@ import { LocalizePipe } from '../../shared/localize.pipe';
             </div>
             <div class="field">
               <label for="frameworkName">{{ 'setup.frameworkName' | localize }}</label>
-              <input id="frameworkName" formControlName="framework_name" placeholder="odoo, nestjs, django" />
+              <input
+                id="frameworkName"
+                formControlName="framework_name"
+                list="frameworkCatalog"
+                placeholder="odoo, nestjs, django"
+                (change)="selectPrimaryFramework($any($event.target).value)"
+              />
+              <datalist id="frameworkCatalog">
+                @for (technology of frameworkOptions(); track technology.id) {
+                  <option [value]="technologyNameOf(technology)">{{ technology.kind }} · {{ technology.ecosystem }}</option>
+                }
+              </datalist>
             </div>
             <div class="field">
               <label for="frameworkVersion">{{ 'setup.frameworkVersion' | localize }}</label>
-              <input id="frameworkVersion" formControlName="framework_version" />
+              <input id="frameworkVersion" formControlName="framework_version" list="frameworkVersionCatalog" />
+              <datalist id="frameworkVersionCatalog">
+                @for (version of frameworkVersionOptions(); track version) {
+                  <option [value]="version"></option>
+                }
+              </datalist>
             </div>
           </div>
 
@@ -69,9 +88,14 @@ import { LocalizePipe } from '../../shared/localize.pipe';
             <div class="grid gap-3">
               @for (item of techStack(); track $index) {
                 <div class="grid gap-2 md:grid-cols-[1fr_1fr_0.8fr_0.8fr_auto]">
-                  <input class="mini-input" [attr.aria-label]="'common.category' | localize" [value]="item.category" (input)="updateTech($index, 'category', $any($event.target).value)" [attr.placeholder]="'common.category' | localize" />
-                  <input class="mini-input" [attr.aria-label]="'common.name' | localize" [value]="item.name" (input)="updateTech($index, 'name', $any($event.target).value)" [attr.placeholder]="'common.name' | localize" />
-                  <input class="mini-input" [attr.aria-label]="'common.version' | localize" [value]="item.version ?? ''" (input)="updateTech($index, 'version', $any($event.target).value)" [attr.placeholder]="'common.version' | localize" />
+                  <input class="mini-input" [attr.aria-label]="'common.category' | localize" [value]="item.category" list="technologyKindCatalog" (input)="updateTech($index, 'category', $any($event.target).value)" [attr.placeholder]="'common.category' | localize" />
+                  <input class="mini-input" [attr.aria-label]="'common.name' | localize" [value]="item.name" list="technologyNameCatalog" (input)="updateTech($index, 'name', $any($event.target).value)" (change)="selectTechStackItem($index, $any($event.target).value)" [attr.placeholder]="'common.name' | localize" />
+                  <input class="mini-input" [attr.aria-label]="'common.version' | localize" [value]="item.version ?? ''" [attr.list]="'technologyVersionCatalog-' + $index" (input)="updateTech($index, 'version', $any($event.target).value)" [attr.placeholder]="'common.version' | localize" />
+                  <datalist [id]="'technologyVersionCatalog-' + $index">
+                    @for (version of techVersionOptions(item); track version) {
+                      <option [value]="version"></option>
+                    }
+                  </datalist>
                   <select class="mini-input" [attr.aria-label]="'common.source' | localize" [value]="item.source" (change)="updateTech($index, 'source', $any($event.target).value)">
                     <option value="declared">{{ 'enum.declared' | localize }}</option>
                     <option value="detected">{{ 'enum.detected' | localize }}</option>
@@ -81,6 +105,16 @@ import { LocalizePipe } from '../../shared/localize.pipe';
                 </div>
               }
             </div>
+            <datalist id="technologyKindCatalog">
+              @for (kind of technologyKinds(); track kind) {
+                <option [value]="kind"></option>
+              }
+            </datalist>
+            <datalist id="technologyNameCatalog">
+              @for (technology of catalog(); track technology.id) {
+                <option [value]="technologyNameOf(technology)">{{ technology.kind }} · {{ technology.ecosystem }}</option>
+              }
+            </datalist>
           </div>
 
           <button class="btn primary w-fit" type="submit">{{ 'setup.createProject' | localize }}</button>
@@ -187,9 +221,18 @@ export class ProjectSetupPage {
   protected readonly repositories = signal<Repository[]>([]);
   protected readonly paths = signal<ProjectPath[]>([]);
   protected readonly configFiles = signal<ConfigFile[]>([]);
+  protected readonly catalog = signal<TechnologyCatalogItem[]>([]);
+  protected readonly frameworkVersionOptions = signal<string[]>([]);
   protected readonly techStack = signal<TechStackItem[]>([
     { category: 'framework', name: '', version: '', source: 'declared' },
   ]);
+  protected readonly frameworkOptions = computed(() =>
+    this.catalog().filter((technology) => ['framework', 'library'].includes(technology.kind)),
+  );
+  protected readonly technologyKinds = computed(() =>
+    Array.from(new Set(this.catalog().map((technology) => technology.kind))).sort(),
+  );
+  protected readonly technologyNameOf = technologyNameOf;
   protected readonly notice = signal('');
   protected readonly error = signal('');
 
@@ -222,6 +265,7 @@ export class ProjectSetupPage {
 
   constructor() {
     void this.refresh();
+    void this.loadCatalog();
   }
 
   async refresh() {
@@ -243,6 +287,53 @@ export class ProjectSetupPage {
     this.techStack.update((rows) =>
       rows.map((row, i) => (i === index ? { ...row, [key]: value } : row)),
     );
+  }
+
+  selectPrimaryFramework(value: string) {
+    const technology = this.findTechnology(value, ['framework', 'library']);
+    if (!technology) {
+      this.frameworkVersionOptions.set([]);
+      return;
+    }
+
+    const name = technologyNameOf(technology);
+    const latest = technologyLatestVersionOf(technology);
+    this.projectForm.patchValue({
+      framework_name: name,
+      framework_version: this.projectForm.controls.framework_version.value || latest,
+    });
+    this.frameworkVersionOptions.set((technology.versions ?? []).map((version) => version.version));
+    this.ensureTechStackItem(technology, this.projectForm.controls.framework_version.value || latest);
+  }
+
+  selectTechStackItem(index: number, value: string) {
+    const technology = this.findTechnology(value);
+    if (!technology) {
+      this.updateTech(index, 'technology_id', '');
+      return;
+    }
+
+    this.techStack.update((rows) =>
+      rows.map((row, i) =>
+        i === index
+          ? {
+              ...row,
+              technology_id: technology.id,
+              category: technology.kind,
+              name: technologyNameOf(technology),
+              version: row.version || technologyLatestVersionOf(technology),
+            }
+          : row,
+      ),
+    );
+  }
+
+  techVersionOptions(item: TechStackItem) {
+    const technologyId = item.technology_id ?? item.technologyId;
+    const technology = technologyId
+      ? this.catalog().find((entry) => entry.id === technologyId)
+      : this.findTechnology(item.name);
+    return (technology?.versions ?? []).map((version) => version.version);
   }
 
   async createProject() {
@@ -356,6 +447,7 @@ export class ProjectSetupPage {
       .filter((row) => row.category.trim() && row.name.trim() && row.source)
       .map((row) => compactRecord({
         category: row.category.trim(),
+        technology_id: row.technology_id?.trim(),
         name: row.name.trim(),
         version: row.version?.trim(),
         source: row.source,
@@ -378,6 +470,54 @@ export class ProjectSetupPage {
     if (!this.state.activeRepositoryId() && repositories[0]) {
       this.state.selectRepository(repositories[0].id);
     }
+  }
+
+  private async loadCatalog() {
+    try {
+      this.catalog.set(await this.api.technologyCatalog({ limit: 100 }));
+    } catch {
+      this.catalog.set([]);
+    }
+  }
+
+  private findTechnology(value: string, kinds?: string[]) {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return undefined;
+    return this.catalog().find((technology) => {
+      if (kinds && !kinds.includes(technology.kind)) return false;
+      const names = [
+        technology.slug,
+        technologyNameOf(technology),
+        ...(technology.aliases ?? []).map((alias) => alias.alias),
+      ].map((item) => item.toLowerCase());
+      return names.includes(normalized);
+    });
+  }
+
+  private ensureTechStackItem(technology: TechnologyCatalogItem, version: string) {
+    const name = technologyNameOf(technology);
+    this.techStack.update((rows) => {
+      const exists = rows.some(
+        (row) => row.technology_id === technology.id || row.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (exists) {
+        return rows.map((row) =>
+          row.technology_id === technology.id || row.name.toLowerCase() === name.toLowerCase()
+            ? { ...row, technology_id: technology.id, category: technology.kind, name, version }
+            : row,
+        );
+      }
+      return [
+        ...rows,
+        {
+          technology_id: technology.id,
+          category: technology.kind,
+          name,
+          version,
+          source: 'declared',
+        },
+      ];
+    });
   }
 
   private requireProjectCode() {

@@ -21,6 +21,10 @@ class PrimaryFrameworkDto {
 }
 
 export class CreateTechStackItemDto {
+  @IsOptional()
+  @IsString()
+  technology_id?: string;
+
   @IsString()
   @IsNotEmpty()
   category!: string;

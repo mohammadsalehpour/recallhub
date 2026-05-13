@@ -85,6 +85,8 @@ export type Project = {
 
 export type TechStackItem = {
   id?: string;
+  technology_id?: string;
+  technologyId?: string;
   category: string;
   name: string;
   version?: string;
@@ -93,6 +95,46 @@ export type TechStackItem = {
   confidence?: number;
   notes?: string;
 };
+
+export type TechnologyAlias = {
+  id: string;
+  alias: string;
+};
+
+export type TechnologyVersion = {
+  id: string;
+  technologyId?: string;
+  technology_id?: string;
+  version: string;
+  isDefault?: boolean;
+  is_default?: boolean;
+  isDeprecated?: boolean;
+  is_deprecated?: boolean;
+};
+
+export type TechnologyCatalogItem = {
+  id: string;
+  slug: string;
+  canonicalName?: string;
+  canonical_name?: string;
+  kind: string;
+  ecosystem?: string | null;
+  description?: string | null;
+  latestVersion?: string | null;
+  latest_version?: string | null;
+  source: string;
+  status: string;
+  aliases?: TechnologyAlias[];
+  versions?: TechnologyVersion[];
+};
+
+export function technologyNameOf(item: TechnologyCatalogItem | null | undefined): string {
+  return item?.canonicalName ?? item?.canonical_name ?? '';
+}
+
+export function technologyLatestVersionOf(item: TechnologyCatalogItem | null | undefined): string {
+  return item?.latestVersion ?? item?.latest_version ?? '';
+}
 
 export type Repository = {
   id: string;

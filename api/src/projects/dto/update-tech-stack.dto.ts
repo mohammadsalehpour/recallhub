@@ -10,6 +10,10 @@ import {
 export class UpdateTechStackDto {
   @IsOptional()
   @IsString()
+  technology_id?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @IsOptional()

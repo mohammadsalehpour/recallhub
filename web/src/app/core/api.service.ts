@@ -15,6 +15,7 @@ import {
   Repository,
   StabilitySnapshot,
   TechStackItem,
+  TechnologyCatalogItem,
   WorkItem,
   WorkflowDefinition,
   WorkflowEvent,
@@ -125,6 +126,16 @@ export class ApiService {
 
   getProject(code: string) {
     return this.request<Project>('GET', `/projects/${encodeURIComponent(code)}`);
+  }
+
+  technologyCatalog(params: { query?: string; kind?: string; ecosystem?: string; limit?: number } = {}) {
+    const search = new URLSearchParams();
+    if (params.query) search.set('query', params.query);
+    if (params.kind) search.set('kind', params.kind);
+    if (params.ecosystem) search.set('ecosystem', params.ecosystem);
+    if (params.limit) search.set('limit', String(params.limit));
+    const query = search.toString();
+    return this.request<TechnologyCatalogItem[]>('GET', `/technology-catalog${query ? `?${query}` : ''}`);
   }
 
   techStack(code: string) {

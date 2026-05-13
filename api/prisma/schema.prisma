@@ -225,6 +225,7 @@ model PasswordResetRequest {
 model ProjectTechStack {
   id           String     @id @default(uuid()) @db.Uuid
   projectId    String     @map("project_id") @db.Uuid
+  technologyId String?    @map("technology_id") @db.Uuid
   category     String
   name         String
   version      String?
@@ -235,9 +236,74 @@ model ProjectTechStack {
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
   project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  technology   TechnologyCatalog? @relation(fields: [technologyId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
+  @@index([technologyId])
   @@map("rh_project_tech_stack")
+  @@schema("recallhub_core")
+}
+
+model TechnologyCatalog {
+  id            String              @id @default(uuid()) @db.Uuid
+  slug          String              @unique
+  canonicalName String              @map("canonical_name")
+  kind          String
+  ecosystem     String?
+  description   String?
+  homepageUrl   String?             @map("homepage_url")
+  repositoryUrl String?             @map("repository_url")
+  license       String?
+  latestVersion String?             @map("latest_version")
+  source        String
+  confidence    Decimal?            @db.Decimal(3, 2)
+  status        TechStatus          @default(active)
+  metadataJson  Json?               @map("metadata_json")
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  versions      TechnologyVersion[]
+  aliases       TechnologyAlias[]
+  projectItems  ProjectTechStack[]
+
+  @@index([kind])
+  @@index([ecosystem])
+  @@index([status])
+  @@index([canonicalName])
+  @@map("rh_technology_catalog")
+  @@schema("recallhub_core")
+}
+
+model TechnologyVersion {
+  id                String            @id @default(uuid()) @db.Uuid
+  technologyId      String            @map("technology_id") @db.Uuid
+  version           String
+  publishedAt       DateTime?         @map("published_at") @db.Timestamptz(6)
+  isDefault         Boolean           @default(false) @map("is_default")
+  isDeprecated      Boolean           @default(false) @map("is_deprecated")
+  deprecatedReason  String?           @map("deprecated_reason")
+  licensesJson      Json?             @map("licenses_json")
+  advisoriesJson    Json?             @map("advisories_json")
+  metadataJson      Json?             @map("metadata_json")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  technology        TechnologyCatalog @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@unique([technologyId, version])
+  @@index([technologyId])
+  @@map("rh_technology_versions")
+  @@schema("recallhub_core")
+}
+
+model TechnologyAlias {
+  id           String            @id @default(uuid()) @db.Uuid
+  technologyId String            @map("technology_id") @db.Uuid
+  alias        String
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  technology   TechnologyCatalog @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@unique([technologyId, alias])
+  @@index([alias])
+  @@map("rh_technology_aliases")
   @@schema("recallhub_core")
 }
 

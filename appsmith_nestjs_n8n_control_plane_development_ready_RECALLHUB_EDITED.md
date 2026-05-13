@@ -277,6 +277,134 @@ source=detected هیچ‌وقت جای declared را نمی‌گیرد.
 detected item تا قبل از approval، status=suggested دارد.
 ```
 
+### 5.2.1 Technology Catalog / کاتالوگ زبان‌ها، فریم‌ورک‌ها و پکیج‌ها
+
+RecallHub نباید برای تعریف پروژه فقط به free-text وابسته باشد. در عین حال، ساخت یک دیتابیس کامل از «تمام زبان‌ها، فریم‌ورک‌ها، پکیج‌ها و نسخه‌های جهان» به‌صورت یک‌باره و کامل عملیاتی، دقیق یا قابل نگهداری نیست. تصمیم محصول این است که یک کاتالوگ ترکیبی ساخته شود:
+
+```text
+Hybrid Technology Catalog
+
+1. seed داخلی و curated برای زبان‌ها، frameworkها، runtimeها، databaseها، package managerها و ابزارهای شناخته‌شده
+2. ساختار دیتابیس آماده برای sync و enrichment از منابع بیرونی
+3. جست‌وجوی local-first در UI
+4. امکان declared/custom برای مواردی که هنوز در catalog نیستند
+5. نسخه‌ها به‌صورت lazy و مرحله‌ای sync شوند، نه import کامل جهان در bootstrap
+```
+
+منابع مبنا:
+
+```text
+GitHub Linguist languages.yml
+  - seed عملی برای زبان‌های programming/markup/data/prose
+  - نسخه زبان‌ها را نمی‌دهد
+
+ecosyste.ms Packages
+  - منبع اصلی package/version/dependency metadata
+  - برای sync on-demand و enrichment مناسب است
+
+Google deps.dev / Open Source Insights
+  - منبع مکمل برای dependency graph، license و security metadata
+  - پوشش محدودتر اما کیفیت metadata بهتر برای ecosystemهای شناخته‌شده
+
+Libraries.io
+  - منبع مکمل برای breadth
+  - چون scraped و curated/validated نیست، نباید source of truth نهایی باشد
+```
+
+مدل دیتابیس:
+
+```text
+rh_technology_catalog
+  id
+  slug                  unique canonical slug مثل javascript, nestjs, postgresql
+  canonical_name        JavaScript, NestJS, PostgreSQL
+  kind                  language | framework | library | package | runtime | database | package_manager | build_tool | test_tool
+  ecosystem             github_linguist | npm | pypi | maven | nuget | cargo | go | rubygems | packagist | custom
+  description
+  homepage_url
+  repository_url
+  license
+  latest_version
+  source                seed | linguist | ecosyste.ms | deps.dev | libraries.io | user
+  confidence            0..1 برای classification/enrichment
+  status                active | suggested | rejected | deprecated
+  metadata_json
+  created_at
+  updated_at
+
+rh_technology_versions
+  id
+  technology_id
+  version
+  published_at
+  is_default
+  is_deprecated
+  deprecated_reason
+  licenses_json
+  advisories_json
+  metadata_json
+  created_at
+  updated_at
+
+rh_technology_aliases
+  id
+  technology_id
+  alias                 js, node, nest, postgres, etc.
+  created_at
+```
+
+ارتباط با پروژه:
+
+```text
+rh_project_tech_stack.technology_id optional FK -> rh_technology_catalog.id
+
+قانون:
+- اگر کاربر از catalog انتخاب کند، technology_id ذخیره می‌شود.
+- name/category/version همچنان denormalized باقی می‌مانند تا historical snapshot پروژه خراب نشود.
+- اگر موردی در catalog نبود، کاربر می‌تواند custom declared item ثبت کند و technology_id خالی بماند.
+```
+
+قانون classification:
+
+```text
+هیچ registry عمومی به‌تنهایی framework/library/tool/runtime را دقیق تشخیص نمی‌دهد.
+classification باید ترکیبی باشد:
+- curated seed برای موارد شناخته‌شده
+- ecosystem و keywords/topics
+- usage و reverse dependencies
+- در آینده classifier یا LLM فقط با status=suggested و confidence، نه auto-active
+```
+
+API MVP:
+
+```text
+GET /technology-catalog?query=&kind=&ecosystem=&limit=
+  جست‌وجوی local-first برای autocomplete
+
+GET /technology-catalog/:id/versions
+  نسخه‌های ذخیره‌شده برای item انتخاب‌شده
+```
+
+UI MVP:
+
+```text
+Project Setup:
+- primary framework با autocomplete از technology catalog
+- framework version از versions ذخیره‌شده پیشنهاد شود
+- tech stack item name با datalist/catalog suggestion پر شود
+- اگر کاربر مقدار جدید نوشت، به عنوان declared custom پذیرفته شود
+```
+
+منابع رسمی/فنی مبنا:
+
+```text
+NestJS Lifecycle Events:
+  seed idempotent داخلی با OnModuleInit انجام شود.
+
+Angular Reactive Forms:
+  Project Setup همان فرم reactive موجود را نگه دارد و فقط suggestion/catalog binding اضافه شود.
+```
+
 ### 5.3 Repository Binding
 
 کاربر باید بتواند مسیر پروژه را بدهد، اما مسیر فقط بعد از validation قابل استفاده است.
