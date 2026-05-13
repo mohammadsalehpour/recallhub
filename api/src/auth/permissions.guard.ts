@@ -145,11 +145,11 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const granted = new Set(
-      (request.recallhubAuth?.roles ?? []).flatMap(
-        (role) => ROLE_PERMISSIONS[role] ?? [],
-      ),
-    );
+    const auth = request.recallhubAuth;
+    const granted = new Set([
+      ...(auth?.permissions ?? []),
+      ...(auth?.roles ?? []).flatMap((role) => ROLE_PERMISSIONS[role] ?? []),
+    ]);
 
     if (
       granted.has('*') ||

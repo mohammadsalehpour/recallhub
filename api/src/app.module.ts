@@ -11,6 +11,7 @@ import { MemoryModule } from './memory/memory.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { RepositoryModule } from './repository/repository.module';
+import { TechnologyCatalogModule } from './technology-catalog/technology-catalog.module';
 import { WorkItemsModule } from './work-items/work-items.module';
 import { StabilizationModule } from './stabilization/stabilization.module';
 import { WorkflowsModule } from './workflows/workflows.module';
@@ -26,6 +27,7 @@ import { WorkflowsModule } from './workflows/workflows.module';
     AuditModule,
     ArtifactsModule,
     RepositoryModule,
+    TechnologyCatalogModule,
     ProjectsModule,
     MemoryModule,
     N8nModule,

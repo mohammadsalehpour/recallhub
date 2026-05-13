@@ -1,0 +1,106 @@
+@if (isAuthRoute()) {
+  <main class="auth-shell text-slate-900">
+    <div class="auth-language">
+      <app-language-switcher />
+    </div>
+    <router-outlet />
+  </main>
+} @else {
+  <main class="bg-app text-slate-900">
+    <div class="app-frame">
+      <aside class="app-sidebar">
+        <a class="brand-lockup" routerLink="/project-setup" [attr.aria-label]="'shell.home' | localize">
+          <span class="brand-mark">RH</span>
+          <span>
+            <strong>RecallHub</strong>
+            <small>{{ 'app.subtitle' | localize }}</small>
+          </span>
+        </a>
+
+        <nav [attr.aria-label]="'shell.mainNavigation' | localize" class="app-nav">
+          @for (page of visiblePages(); track page.path) {
+            <a
+              class="nav-item"
+              routerLinkActive="active"
+              [routerLink]="page.path"
+              [attr.aria-label]="page.labelKey | localize"
+            >
+              <span class="nav-icon" aria-hidden="true">
+                <lucide-icon [name]="page.icon" [size]="18" [strokeWidth]="2.35" />
+              </span>
+              <span>{{ page.labelKey | localize }}</span>
+            </a>
+          }
+        </nav>
+
+        <section class="status-card" [attr.aria-label]="'shell.activeContext' | localize">
+          <div class="status-card-header">
+            <span class="eyebrow">{{ 'shell.activeContext' | localize }}</span>
+          </div>
+          <div class="context-field">
+            <label for="activeProject">{{ 'shell.project' | localize }}</label>
+            <div class="context-select-wrap">
+              <select
+                id="activeProject"
+                [value]="state.activeProjectId() || state.activeProjectCode()"
+                (change)="selectActiveProject($any($event.target).value)"
+              >
+                <option value="">{{ 'shell.notSelected' | localize }}</option>
+                @if (activeProjectMissing()) {
+                  <option [value]="state.activeProjectCode()">{{ state.activeProjectCode() }}</option>
+                }
+                @for (project of projects(); track project.id) {
+                  <option [value]="project.id">{{ projectCodeOf(project) }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          <dl>
+            <div>
+              <dt>{{ 'shell.workItem' | localize }}</dt>
+              <dd>{{ state.activeWorkItemId() || ('shell.notSelected' | localize) }}</dd>
+            </div>
+          </dl>
+        </section>
+      </aside>
+
+      <section class="content-shell">
+        @if (state.isAuthenticated()) {
+          <header class="topbar">
+            <div class="topbar-title">
+              <h1>{{ pageHeader().titleKey | localize }}</h1>
+              <p>{{ pageHeader().subtitleKey | localize }}</p>
+            </div>
+            <div class="user-menu">
+              <button
+                class="user-menu-button"
+                type="button"
+                aria-haspopup="menu"
+                [attr.aria-expanded]="userMenuOpen()"
+                (click)="userMenuOpen.set(!userMenuOpen())"
+              >
+                @if (state.currentUser()?.avatar_url) {
+                  <img [src]="state.currentUser()?.avatar_url" alt="" />
+                } @else {
+                  <span>{{ userInitials() }}</span>
+                }
+                <span>{{ state.currentUser()?.username }}</span>
+              </button>
+
+              @if (userMenuOpen()) {
+                <div class="user-menu-panel" role="menu">
+                  <div class="user-menu-language">
+                    <app-language-switcher />
+                  </div>
+                  <a routerLink="/profile" role="menuitem" (click)="userMenuOpen.set(false)">{{ 'profile.view' | localize }}</a>
+                  <button type="button" role="menuitem" (click)="logout()">{{ 'profile.logout' | localize }}</button>
+                </div>
+              }
+            </div>
+          </header>
+        }
+        <router-outlet />
+      </section>
+    </div>
+  </main>
+}

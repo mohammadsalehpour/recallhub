@@ -1,7 +1,0 @@
-[
-  { "name": "qMemoryModules", "method": "GET", "path": "/projects/{{appsmith.store.activeProjectCode}}/modules" },
-  { "name": "qMemoryFiles", "method": "GET", "path": "/projects/{{appsmith.store.activeProjectCode}}/files" },
-  { "name": "qMemoryChunks", "method": "GET", "path": "/projects/{{appsmith.store.activeProjectCode}}/memory-chunks" },
-  { "name": "qMemoryEvents", "method": "GET", "path": "/projects/{{appsmith.store.activeProjectCode}}/memory-events" },
-  { "name": "qMemoryCommits", "method": "GET", "path": "/projects/{{appsmith.store.activeProjectCode}}/memory-commits" }
-]

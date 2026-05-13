@@ -61,6 +61,7 @@ export class ProjectsService {
             primaryFrameworkVersion: dto.primary_framework.version,
             techStack: {
               create: dto.tech_stack.map((item) => ({
+                technologyId: item.technology_id,
                 category: item.category,
                 name: item.name,
                 version: item.version,
@@ -172,6 +173,7 @@ export class ProjectsService {
     const created = await this.prisma.projectTechStack.create({
       data: {
         projectId: project.id,
+        technologyId: dto.technology_id,
         category: dto.category,
         name: dto.name,
         version: dto.version,
@@ -205,6 +207,7 @@ export class ProjectsService {
       where: { id },
       data: {
         category: dto.category,
+        technologyId: dto.technology_id,
         name: dto.name,
         version: dto.version,
         source: dto.source,

@@ -14,7 +14,7 @@ export function setupOpenApi(app: INestApplication) {
         type: 'apiKey',
         name: 'x-recallhub-api-key',
         in: 'header',
-        description: 'RecallHub API key for Appsmith and internal tools.',
+        description: 'RecallHub API key for the Angular control plane and internal tools.',
       },
       'recallhub-api-key',
     )
